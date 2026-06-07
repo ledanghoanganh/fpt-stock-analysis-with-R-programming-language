@@ -1,0 +1,13 @@
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+
+*.log
+*.html
+*.tmp
+
+output/models/*.rds
+
+.DS_Store
+Thumbs.db
