@@ -710,17 +710,17 @@ git push origin person3-garch-report
 
 ### 15.1. Checklist Người 1
 
-- [ ] Đã thu thập dữ liệu FPT bằng notebook Colab.
-- [ ] Đã lưu dữ liệu thô vào `data/raw/FPT_stock_data.csv`.
-- [ ] Đã làm sạch dữ liệu.
-- [ ] Đã tạo `data/processed/fpt_clean.csv`.
-- [ ] Đã tạo thống kê mô tả.
-- [ ] Đã kiểm tra missing values.
-- [ ] Đã tạo biểu đồ giá đóng cửa.
-- [ ] Đã tạo biểu đồ volume.
-- [ ] Đã tạo biểu đồ return.
-- [ ] Đã viết phần Data.
-- [ ] Đã viết phần Visualization.
+- [x] Đã thu thập dữ liệu FPT bằng notebook Colab.
+- [x] Đã lưu dữ liệu thô vào `data/raw/FPT_stock_data.csv`.
+- [x] Đã làm sạch dữ liệu.
+- [x] Đã tạo `data/processed/fpt_clean.csv`.
+- [x] Đã tạo thống kê mô tả.
+- [x] Đã kiểm tra missing values.
+- [x] Đã tạo biểu đồ giá đóng cửa.
+- [x] Đã tạo biểu đồ volume.
+- [x] Đã tạo biểu đồ return.
+- [x] Đã viết phần Data.
+- [x] Đã viết phần Visualization.
 
 ### 15.2. Checklist Người 2
 
