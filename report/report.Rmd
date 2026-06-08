@@ -16,3 +16,32 @@ knitr::opts_chunk$set(
 )
 
 library(tidyverse)
+```
+
+```{r 00_config}
+
+```
+
+```{r 01_data_cleaning.R}
+
+```
+
+```{r 02_visualization.R}
+
+```
+
+```{r 03_stationarity_arima_ets.R}
+
+```
+
+```{r 04_garch_volatility.R}
+
+```
+
+```{r 05_model_comparison.R}
+
+```
+
+```{r 06_export_report_tables.R}
+
+```
