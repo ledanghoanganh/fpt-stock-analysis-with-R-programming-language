@@ -6,13 +6,15 @@
 
 # 1. KHAI BÁO THƯ VIỆN ---------------------------------------------------------
 library(tidyverse)
+library(lubridate) # Thêm lubridate để xử lý ngày tháng thông minh hơn
+
 # 2. THIẾT LẬP ĐƯỜNG DẪN FILE --------------------------------------------------
 raw_data_path <- "~/Downloads/FPT_stock_data.csv"
 clean_data_path <- "data/processed/fpt_clean.csv"
 
 # Kiểm tra xem file thô đã được đặt đúng chỗ chưa
 if (!file.exists(raw_data_path)) {
-  stop("Không tìm thấy file FPT_stock_data.csv trong thư mục data/raw/! Vui lòng kiểm tra lại.")
+  stop("Không tìm thấy file FPT_stock_data.csv trong đường dẫn Downloads! Vui lòng kiểm tra lại.")
 }
 
 # 3. ĐỌC VÀ KIỂM TRA ĐỊNH DẠNG DỮ LIỆU ----------------------------------------
@@ -23,10 +25,12 @@ str(df_raw)
 
 # 4. TIẾN HÀNH LÀM SẠCH DỮ LIỆU ------------------------------------------------
 df_clean <- df_raw %>%
-  # Chuyển đổi cột time từ dạng chữ (character) sang dạng ngày tháng chuẩn (Date)
-  mutate(time = as.Date(time)) %>%
-  # Sắp xếp dữ liệu theo thứ tự thời gian tăng dần (từ xa nhất đến gần nhất)
-  arrange(time) %>%
+  # Đổi tên cột từ time thành date theo đúng file thô mới
+  mutate(date = as.Date(parse_date_time(date, orders = c("Ymd", "Ymd HMS", "dmY", "dmY HMS")))) %>%
+  
+  # Sắp xếp dữ liệu theo thứ tự thời gian tăng dần
+  arrange(date) %>%
+  
   # Đảm bảo các cột giá và khối lượng ở dạng số (numeric)
   mutate(
     open   = as.numeric(open),
@@ -35,8 +39,9 @@ df_clean <- df_raw %>%
     close  = as.numeric(close),
     volume = as.numeric(volume)
   ) %>%
-  # Loại bỏ các dòng bị trống hoàn toàn (nếu có)
-  filter(!is.na(time) & !is.na(close))
+  
+  # Loại bỏ các dòng bị trống hoàn toàn hoặc lỗi định dạng (kiểm tra theo cột date)
+  filter(!is.na(date) & !is.na(close))
 
 # 5. XUẤT DỮ LIỆU ĐÃ LÀM SẠCH -------------------------------------------------
 # Tạo thư mục processed nếu chưa có
@@ -49,4 +54,4 @@ write.csv(df_clean, clean_data_path, row.names = FALSE)
 
 print("--- Quá trình làm sạch hoàn tất! ---")
 print(paste("Tổng số dòng dữ liệu thu được:", nrow(df_clean)))
-print(paste("Giai đoạn dữ liệu: Từ ngày", min(df_clean$time), "đến ngày", max(df_clean$time)))
+print(paste("Giai đoạn dữ liệu: Từ ngày", min(df_clean$date), "đến ngày", max(df_clean$date)))
