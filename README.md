@@ -724,18 +724,18 @@ git push origin person3-garch-report
 
 ### 15.2. Checklist Người 2
 
-- [ ] Đã đọc được `data/processed/fpt_clean.csv`.
-- [ ] Đã kiểm định ADF.
-- [ ] Đã log transform.
-- [ ] Đã differencing.
-- [ ] Đã chia train/test.
-- [ ] Đã xây dựng ARIMA.
-- [ ] Đã xây dựng ETS.
-- [ ] Đã tính RMSE.
-- [ ] Đã tính MAPE.
-- [ ] Đã xuất `forecast_metrics.csv`.
-- [ ] Đã lưu model ARIMA/ETS.
-- [ ] Đã viết phần Modeling ARIMA/ETS.
+- [x] Đã đọc được `data/processed/fpt_clean.csv`.
+- [x] Đã kiểm định ADF.
+- [x] Đã log transform.
+- [x] Đã differencing.
+- [x] Đã chia train/test.
+- [x] Đã xây dựng ARIMA.
+- [x] Đã xây dựng ETS.
+- [x] Đã tính RMSE.
+- [x] Đã tính MAPE.
+- [x] Đã xuất `forecast_metrics.csv`.
+- [x] Đã lưu model ARIMA/ETS.
+- [x] Đã viết phần Modeling ARIMA/ETS.
 
 ### 15.3. Checklist Người 3
 

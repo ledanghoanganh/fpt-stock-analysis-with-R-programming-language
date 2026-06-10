@@ -4,28 +4,23 @@
 # PURPOSE: Đọc, kiểm tra và làm sạch dữ liệu thô cổ phiếu FPT
 # ==============================================================================
 
-# 1. KHAI BÁO THƯ VIỆN ---------------------------------------------------------
-library(tidyverse)
-library(lubridate) # Thêm lubridate để xử lý ngày tháng thông minh hơn
+# 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH ----------------------------------------------
+source("R/00_config.R")
 
-# 2. THIẾT LẬP ĐƯỜNG DẪN FILE --------------------------------------------------
-raw_data_path <- "~/Downloads/FPT_stock_data.csv"
-clean_data_path <- "data/processed/fpt_clean.csv"
-
-# Kiểm tra xem file thô đã được đặt đúng chỗ chưa
-if (!file.exists(raw_data_path)) {
-  stop("Không tìm thấy file FPT_stock_data.csv trong đường dẫn Downloads! Vui lòng kiểm tra lại.")
+# 2. KIỂM TRA ĐƯỜNG DẪN FILE --------------------------------------------------
+if (!file.exists(RAW_DATA_PATH)) {
+  stop(paste("Không tìm thấy file thô tại:", RAW_DATA_PATH))
 }
 
 # 3. ĐỌC VÀ KIỂM TRA ĐỊNH DẠNG DỮ LIỆU ----------------------------------------
-df_raw <- read.csv(raw_data_path, stringsAsFactors = FALSE)
+df_raw <- read.csv(RAW_DATA_PATH, stringsAsFactors = FALSE)
 
 print("--- Cấu trúc bộ dữ liệu thô ban đầu: ---")
 str(df_raw)
 
 # 4. TIẾN HÀNH LÀM SẠCH DỮ LIỆU ------------------------------------------------
 df_clean <- df_raw %>%
-  # Đổi tên cột từ time thành date theo đúng file thô mới
+  # Định dạng lại cột date
   mutate(date = as.Date(parse_date_time(date, orders = c("Ymd", "Ymd HMS", "dmY", "dmY HMS")))) %>%
   
   # Sắp xếp dữ liệu theo thứ tự thời gian tăng dần
@@ -40,17 +35,19 @@ df_clean <- df_raw %>%
     volume = as.numeric(volume)
   ) %>%
   
-  # Loại bỏ các dòng bị trống hoàn toàn hoặc lỗi định dạng (kiểm tra theo cột date)
-  filter(!is.na(date) & !is.na(close))
+  # Loại bỏ các dòng bị trống hoặc lỗi định dạng
+  filter(!is.na(date) & !is.na(close)) %>%
+  
+  # Tạo thêm các cột biến phục vụ phân tích theo yêu cầu
+  mutate(
+    time = date,               # Hỗ trợ script visualization cũ
+    log_close = log(close),    # Log của giá đóng cửa
+    return = log_close - lag(log_close) # Lợi suất log hằng ngày
+  )
 
 # 5. XUẤT DỮ LIỆU ĐÃ LÀM SẠCH -------------------------------------------------
-# Tạo thư mục processed nếu chưa có
-if (!dir.exists("data/processed")) {
-  dir.create("data/processed", recursive = TRUE)
-}
-
 # Lưu file sạch
-write.csv(df_clean, clean_data_path, row.names = FALSE)
+write.csv(df_clean, CLEAN_DATA_PATH, row.names = FALSE)
 
 print("--- Quá trình làm sạch hoàn tất! ---")
 print(paste("Tổng số dòng dữ liệu thu được:", nrow(df_clean)))

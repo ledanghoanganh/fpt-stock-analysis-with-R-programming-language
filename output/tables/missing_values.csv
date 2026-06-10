@@ -1,8 +1,11 @@
 "Variable","Missing_Count","Missing_Percentage"
-"time",0,0
-"open",0,0
+"date",0,0
+"close",0,0
 "high",0,0
 "low",0,0
-"close",0,0
+"open",0,0
 "volume",0,0
-"returns",1,4.54545454545455
+"time",0,0
+"log_close",0,0
+"return",1,0.0337837837837838
+"returns",1,0.0337837837837838
