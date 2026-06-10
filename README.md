@@ -710,32 +710,32 @@ git push origin person3-garch-report
 
 ### 15.1. Checklist Người 1
 
-- [ ] Đã thu thập dữ liệu FPT bằng notebook Colab.
-- [ ] Đã lưu dữ liệu thô vào `data/raw/FPT_stock_data.csv`.
-- [ ] Đã làm sạch dữ liệu.
-- [ ] Đã tạo `data/processed/fpt_clean.csv`.
-- [ ] Đã tạo thống kê mô tả.
-- [ ] Đã kiểm tra missing values.
-- [ ] Đã tạo biểu đồ giá đóng cửa.
-- [ ] Đã tạo biểu đồ volume.
-- [ ] Đã tạo biểu đồ return.
-- [ ] Đã viết phần Data.
-- [ ] Đã viết phần Visualization.
+- [x] Đã thu thập dữ liệu FPT bằng notebook Colab.
+- [x] Đã lưu dữ liệu thô vào `data/raw/FPT_stock_data.csv`.
+- [x] Đã làm sạch dữ liệu.
+- [x] Đã tạo `data/processed/fpt_clean.csv`.
+- [x] Đã tạo thống kê mô tả.
+- [x] Đã kiểm tra missing values.
+- [x] Đã tạo biểu đồ giá đóng cửa.
+- [x] Đã tạo biểu đồ volume.
+- [x] Đã tạo biểu đồ return.
+- [x] Đã viết phần Data.
+- [x] Đã viết phần Visualization.
 
 ### 15.2. Checklist Người 2
 
-- [ ] Đã đọc được `data/processed/fpt_clean.csv`.
-- [ ] Đã kiểm định ADF.
-- [ ] Đã log transform.
-- [ ] Đã differencing.
-- [ ] Đã chia train/test.
-- [ ] Đã xây dựng ARIMA.
-- [ ] Đã xây dựng ETS.
-- [ ] Đã tính RMSE.
-- [ ] Đã tính MAPE.
-- [ ] Đã xuất `forecast_metrics.csv`.
-- [ ] Đã lưu model ARIMA/ETS.
-- [ ] Đã viết phần Modeling ARIMA/ETS.
+- [x] Đã đọc được `data/processed/fpt_clean.csv`.
+- [x] Đã kiểm định ADF.
+- [x] Đã log transform.
+- [x] Đã differencing.
+- [x] Đã chia train/test.
+- [x] Đã xây dựng ARIMA.
+- [x] Đã xây dựng ETS.
+- [x] Đã tính RMSE.
+- [x] Đã tính MAPE.
+- [x] Đã xuất `forecast_metrics.csv`.
+- [x] Đã lưu model ARIMA/ETS.
+- [x] Đã viết phần Modeling ARIMA/ETS.
 
 ### 15.3. Checklist Người 3
 
