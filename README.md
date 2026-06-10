@@ -739,17 +739,17 @@ git push origin person3-garch-report
 
 ### 15.3. Checklist Người 3
 
-- [ ] Đã đọc được `data/processed/fpt_clean.csv`.
-- [ ] Đã xây dựng GARCH(1,1).
-- [ ] Đã xuất `garch_summary.csv`.
-- [ ] Đã xuất `garch_volatility.csv`.
-- [ ] Đã tạo biểu đồ volatility.
-- [ ] Đã đọc được `forecast_metrics.csv`.
-- [ ] Đã tạo `model_comparison.csv`.
-- [ ] Đã viết Results & Discussion.
-- [ ] Đã viết Conclusion.
-- [ ] Đã ghép báo cáo bằng `report.Rmd`.
-- [ ] Đã xuất `report/report.docx`.
+- [x] Đã đọc được `data/processed/fpt_clean.csv`.
+- [x] Đã xây dựng GARCH(1,1).
+- [x] Đã xuất `garch_summary.csv`.
+- [x] Đã xuất `garch_volatility.csv`.
+- [x] Đã tạo biểu đồ volatility.
+- [x] Đã đọc được `forecast_metrics.csv`.
+- [x] Đã tạo `model_comparison.csv`.
+- [] Đã viết Results & Discussion.
+- [] Đã viết Conclusion.
+- [] Đã ghép báo cáo bằng `report.Rmd`.
+- [] Đã xuất `report/report.docx`.
 
 ### 15.4. Checklist trước khi nộp
 
