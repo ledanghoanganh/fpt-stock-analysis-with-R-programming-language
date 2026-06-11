@@ -1,13 +1,18 @@
-# Kết luận
+# 6. Kết luận và Định hướng Phát triển
 
-Đề tài đã thực hiện quy trình phân tích và dự báo giá cổ phiếu FPT bằng các mô hình chuỗi thời gian. Dữ liệu được thu thập bằng thư viện vnstock, sau đó được xử lý và phân tích trong R.
+## 6.1. Kết luận chung
+Dự án đã hoàn thành toàn diện quy trình phân tích chuỗi thời gian cho cổ phiếu Công ty Cổ phần FPT từ năm 2015 đến năm 2026. Các kết luận chính rút ra từ quá trình nghiên cứu bao gồm:
+1. **Xu hướng tăng trưởng:** FPT là một cổ phiếu có xu hướng tăng trưởng bền vững trong dài hạn, đặc biệt bùng nổ từ sau đại dịch nhờ lợi thế cốt lõi về công nghệ và chuyển đổi số. Chuỗi giá trị mang tính không dừng rõ rệt.
+2. **Khả năng dự báo giá:** Cả hai mô hình ARIMA và ETS đều nắm bắt tốt quỹ đạo tăng trưởng của giá cổ phiếu. Trong đó, mô hình ARIMA có phần nhỉnh hơn với mức sai số rất thấp (MAPE ~ 2.19%), thích hợp để làm kim chỉ nam dự báo trung hạn.
+3. **Đặc tính rủi ro:** Lợi suất cổ phiếu FPT tồn tại hiệu ứng biến động cụm. Mô hình GARCH(1,1) đã chứng minh được tính dai dẳng của biến động ($\beta_1 > 0.9$), giúp hệ thống hóa rủi ro của cổ phiếu trong những giai đoạn thị trường hoảng loạn.
 
-Kết quả phân tích cho thấy giá cổ phiếu FPT có xu hướng biến động theo thời gian và chuỗi giá gốc thường không dừng. Sau khi log transform và differencing, chuỗi trở nên phù hợp hơn cho mô hình hóa.
+## 6.2. Hạn chế của đề tài
+Dù mô hình đạt độ chính xác cao, đề tài vẫn còn tồn đọng một số hạn chế:
+* **Hạn chế về dữ liệu:** Chỉ sử dụng duy nhất dữ liệu lịch sử giá. Trong thực tế, giá cổ phiếu FPT còn chịu tác động rất lớn từ tin tức vĩ mô (lãi suất FED, tỷ giá), chính sách doanh nghiệp, và kết quả kinh doanh hàng quý.
+* **Giới hạn mô hình tuyến tính:** Cả ARIMA và GARCH vẫn là các tiếp cận thống kê truyền thống, có thể gặp khó khăn trong việc bắt đỉnh/đáy (black swan events) nếu thị trường thay đổi cơ cấu đột ngột.
 
-Mô hình ARIMA và ETS được sử dụng để dự báo giá đóng cửa. Hai mô hình này được đánh giá thông qua RMSE và MAPE. Mô hình có sai số nhỏ hơn được xem là phù hợp hơn cho bài toán dự báo ngắn hạn.
-
-Bên cạnh đó, mô hình GARCH(1,1) được sử dụng để phân tích volatility của cổ phiếu FPT. Kết quả từ GARCH cho phép nhận diện các giai đoạn biến động mạnh và hỗ trợ đánh giá rủi ro của cổ phiếu.
-
-Nhìn chung, ARIMA và ETS phù hợp cho mục tiêu dự báo giá, trong khi GARCH phù hợp cho mục tiêu phân tích biến động và rủi ro. Việc kết hợp các mô hình này giúp bài báo cáo có cái nhìn toàn diện hơn về cổ phiếu FPT.
-
-Trong các nghiên cứu tiếp theo, nhóm có thể mở rộng bằng các mô hình nâng cao như SARIMA, Prophet, Random Forest, XGBoost hoặc LSTM. Ngoài ra, nhóm có thể bổ sung thêm dữ liệu vĩ mô, chỉ số VN-Index hoặc dữ liệu tin tức để cải thiện độ chính xác dự báo.
+## 6.3. Hướng phát triển trong tương lai
+Để mở rộng đề tài và nâng cao độ chính xác, nhóm đề xuất các hướng đi sau:
+* Đưa các biến ngoại sinh (Exogenous variables) như VN-Index, lãi suất liên ngân hàng vào mô hình (ARIMAX, GARCH-X).
+* Thử nghiệm các kiến trúc Học máy sâu (Deep Learning) chuyên dụng cho chuỗi thời gian như Long Short-Term Memory (LSTM), GRU hay Time Series Transformer để so sánh với các kỹ thuật thống kê cổ điển.
+* Phân tích sâu hơn bằng Sentiment Analysis (Phân tích cảm xúc) từ các diễn đàn chứng khoán để xem xét yếu tố tâm lý tác động lên thanh khoản.
