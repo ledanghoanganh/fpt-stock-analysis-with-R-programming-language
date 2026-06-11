@@ -616,20 +616,18 @@ Sau khi hoàn thành, dự án sẽ tạo ra các nhóm kết quả sau.
 
 ### 12.4. Kết quả GARCH
 
-- Mô hình sử dụng: `GARCH(1,1)`
-- Tham số omega: `...`
-- Tham số alpha1: `...`
-- Tham số beta1: `...`
-- Nhận xét volatility: `...`
+- Mô hình sử dụng: `ARMA(0,0)-GARCH(1,1)`
+- Tham số omega: `0.00000798` (P-value ~ 0)
+- Tham số alpha1: `0.0673` (P-value ~ 0)
+- Tham số beta1: `0.9021` (P-value ~ 0)
+- Nhận xét volatility: Tổng alpha1 + beta1 = 0.9694 < 1, thỏa mãn tính dừng của phương sai. Cổ phiếu FPT tồn tại hiệu ứng biến động cụm (volatility clustering) cực kỳ rõ rệt. Với beta1 > 0.9, rủi ro biến động của cổ phiếu có tính "dai dẳng" (persistence), nghĩa là một cú sốc trên thị trường sẽ khiến biên độ dao động mất rất nhiều thời gian để bình ổn trở lại.
 
 ### 12.5. Kết luận mô hình tốt nhất
 
-> Điền sau khi có kết quả thực tế.
-
-- Mô hình dự báo giá tốt hơn: `...`
-- Lý do: `...`
-- Mô hình phân tích volatility: `GARCH(1,1)`
-- Nhận xét tổng quan: `...`
+- Mô hình dự báo giá tốt hơn: **ARIMA**
+- Lý do: Mô hình ARIMA có sai số RMSE (2,016.99) và MAPE (2.19%) thấp hơn so với thuật toán san bằng mũ ETS (RMSE 2,099.80, MAPE 2.29%). Độ sai lệch chỉ ~2% là con số lý tưởng cho bài toán dự báo tài chính.
+- Mô hình phân tích volatility: **GARCH(1,1)**
+- Nhận xét tổng quan: Giá cổ phiếu FPT mang đặc tính không dừng, có xu hướng tăng mạnh mẽ theo thời gian. Sự kết hợp giữa ARIMA (để dự báo xu thế giá trung bình) và GARCH (để khoanh vùng độ lệch chuẩn rủi ro) là một giải pháp mô hình hóa toàn diện và xuất sắc cho việc phân tích đầu tư.
 
 ---
 
@@ -739,17 +737,17 @@ git push origin person3-garch-report
 
 ### 15.3. Checklist Người 3
 
-- [ ] Đã đọc được `data/processed/fpt_clean.csv`.
-- [ ] Đã xây dựng GARCH(1,1).
-- [ ] Đã xuất `garch_summary.csv`.
-- [ ] Đã xuất `garch_volatility.csv`.
-- [ ] Đã tạo biểu đồ volatility.
-- [ ] Đã đọc được `forecast_metrics.csv`.
-- [ ] Đã tạo `model_comparison.csv`.
-- [ ] Đã viết Results & Discussion.
-- [ ] Đã viết Conclusion.
-- [ ] Đã ghép báo cáo bằng `report.Rmd`.
-- [ ] Đã xuất `report/report.docx`.
+- [x] Đã đọc được `data/processed/fpt_clean.csv`.
+- [x] Đã xây dựng GARCH(1,1).
+- [x] Đã xuất `garch_summary.csv`.
+- [x] Đã xuất `garch_volatility.csv`.
+- [x] Đã tạo biểu đồ volatility.
+- [x] Đã đọc được `forecast_metrics.csv`.
+- [x] Đã tạo `model_comparison.csv`.
+- [x] Đã viết Results & Discussion.
+- [x] Đã viết Conclusion.
+- [x] Đã ghép báo cáo bằng `report.Rmd`.
+- [x] Đã xuất `report/report.docx`.
 
 ### 15.4. Checklist trước khi nộp
 
@@ -773,7 +771,7 @@ git push origin person3-garch-report
 |---|---|---|---|
 | Người 1 | Data + Visualization | Thu thập, làm sạch, thống kê mô tả, trực quan hóa. | `...` |
 | Người 2 | ARIMA + ETS | Kiểm định tính dừng, mô hình ARIMA/ETS, RMSE/MAPE. | `...` |
-| Người 3 | GARCH + Report | GARCH, volatility, so sánh mô hình, Results & Discussion, kết luận, ghép báo cáo. | `...` |
+| Người 3 | GARCH + Report | GARCH, volatility, so sánh mô hình, Results & Discussion, kết luận, ghép báo cáo. | `100%` |
 
 ---
 

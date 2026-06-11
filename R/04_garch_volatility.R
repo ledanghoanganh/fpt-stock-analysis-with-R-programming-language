@@ -21,6 +21,7 @@ theme_academic <- theme_minimal() +
     plot.subtitle = element_text(family = "Arial", size = 10.5, color = "#444444", hjust = 0.5),
     axis.title = element_text(family = "Arial", face = "bold", size = 11, color = "#111111"),
     axis.text = element_text(family = "Arial", size = 9.5, color = "#333333"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
     panel.grid.major = element_line(color = "#E5E5E5", linewidth = 0.5),
     panel.grid.minor = element_line(color = "#F5F5F5", linewidth = 0.35),
     plot.margin = margin(15, 15, 15, 15)
