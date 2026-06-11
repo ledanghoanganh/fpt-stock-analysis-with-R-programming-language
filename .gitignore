@@ -7,8 +7,6 @@
 *.html
 *.tmp
 
-output/models/*.rds
-
 .DS_Store
 Thumbs.db
 .positai
