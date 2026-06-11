@@ -26,8 +26,8 @@ Dưới đây là 10% công việc cuối cùng (lắp ráp số liệu vào bá
 ## 👤 Người 3: GARCH & Tổng hợp Report
 *Phụ trách: [Điền tên Người 3]*
 
-- [ ] **Hoàn thiện Chương 5 & 6:** Các file `05_garch_results_discussion.md` và `06_conclusion.md` đã được soạn thảo sẵn nội dung phân tích cực kỳ chi tiết (ý nghĩa AIC, BIC, tính dai dẳng của biến động). Chỉ cần đọc lại cho trơn tru và copy bảng `Tham_So_GARCH` từ Excel dán vào để minh họa.
-- [ ] **Cập nhật README.md (Mục 12.4, 12.5 & 16):** Điền số liệu tham số GARCH (omega, alpha, beta), chốt lại kết luận và điền Bảng Đóng góp thành viên (Peer Assessment).
+- [x] **Hoàn thiện Chương 5 & 6:** Các file `05_garch_results_discussion.md` và `06_conclusion.md` đã được soạn thảo sẵn nội dung phân tích cực kỳ chi tiết (ý nghĩa AIC, BIC, tính dai dẳng của biến động). Chỉ cần đọc lại cho trơn tru và copy bảng `Tham_So_GARCH` từ Excel dán vào để minh họa.
+- [x] **Cập nhật README.md (Mục 12.4, 12.5 & 16):** Điền số liệu tham số GARCH (omega, alpha, beta), chốt lại kết luận và điền Bảng Đóng góp thành viên (Peer Assessment).
 - [ ] **XUẤT BÁO CÁO CUỐI CÙNG (KNIT TO WORD):** Mở file `report/report.Rmd` bằng RStudio, nhấn nút **Knit to Word** để hệ thống tự động gom tất cả các file markdown thành bản `report.docx` hoàn chỉnh. Tinh chỉnh lại lề, font chữ nếu cần trước khi đem nộp.
 
 ---
