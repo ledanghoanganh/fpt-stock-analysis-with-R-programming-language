@@ -1,0 +1,4 @@
+"Model","Model_Type","Key_Metric_1","Key_Metric_2"
+"ARIMA","Dự báo mức giá trung bình (Mean Forecast)","RMSE: 2,016.99","MAPE: 2.19%"
+"ETS","Dự báo mức giá trung bình (Mean Forecast)","RMSE: 2,099.80","MAPE: 2.29%"
+"ARMA(0,0)-GARCH(1,1)","Dự báo mức độ biến động (Volatility Forecast)","AIC: -5.5589","BIC: -5.5508"

@@ -1,45 +1,19 @@
-# Results & Discussion: Phân tích biến động bằng mô hình GARCH
+# 5. Phân tích Phương sai và Đánh giá Mô hình GARCH(1,1)
 
-## 1. Mục tiêu của mô hình GARCH
+Dựa trên việc phát hiện ra hiện tượng "biến động cụm" (volatility clustering) ở phần phân tích thăm dò, chúng tôi đã tiến hành mô hình hóa phương sai sai số bằng mô hình GARCH(1,1) kết hợp phương trình trung bình ARMA(0,0). Kết quả chạy mô hình từ file `04_garch_volatility.R` cung cấp các tham số như sau (trích xuất từ bảng `garch_summary.csv`):
 
-Mô hình GARCH được sử dụng để phân tích sự biến động của lợi suất cổ phiếu FPT theo thời gian. Khác với ARIMA và ETS, GARCH không tập trung trực tiếp vào dự báo giá đóng cửa mà tập trung vào mô hình hóa phương sai có điều kiện, hay còn gọi là volatility.
+## 5.1. Phân tích các tham số cốt lõi của GARCH
+* **Hệ số $\alpha_1$ (ARCH effect - 0.0673):** Đại diện cho tác động của các cú sốc (shock) trong quá khứ đối với biến động hiện tại. Hệ số này mang ý nghĩa thống kê ($p-value \approx 0$), chứng tỏ những thông tin mới trên thị trường có ảnh hưởng ngay lập tức đến mức độ rủi ro của cổ phiếu FPT.
+* **Hệ số $\beta_1$ (GARCH effect - 0.9021):** Đại diện cho "sự dai dẳng" (persistence) của biến động phương sai. Với giá trị rất cao (lớn hơn 0.9) và có ý nghĩa thống kê cao ($p-value \approx 0$), điều này chứng minh rằng một khi thị trường có biến động mạnh (do khủng hoảng, dịch bệnh, hoặc thay đổi chính sách), biên độ dao động của FPT sẽ duy trì ở mức cao trong nhiều phiên giao dịch liên tiếp trước khi có thể dịu lại.
+* **Điều kiện dừng của phương sai (Stationarity):** Tổng $\alpha_1 + \beta_1 = 0.0673 + 0.9021 = 0.9694 < 1$. Khẳng định mô hình GARCH(1,1) hoàn toàn phù hợp và ổn định (covariance stationary), phương sai sai số hữu hạn trong dài hạn.
 
-## 2. Lý do sử dụng log return
+## 5.2. Biểu đồ bao quát mức độ biến động (Volatility Plot)
+Tham chiếu hình ảnh `garch_volatility.png`, có thể quan sát thấy rõ hai đường ranh giới màu đỏ (thể hiện sai số chuẩn có điều kiện - conditional standard deviation) bao bọc rất sát các biến động lợi suất thực tế. 
+Vào các giai đoạn bình ổn (2015-2019), biên độ biến động co hẹp. Khi xảy ra các đợt sụt giảm mạnh trên toàn cầu như COVID-19 (2020) hay thị trường chứng khoán trong nước sập sâu (2022), đường ranh giới đỏ lập tức "phình to" để bao phủ rủi ro. Điều này một lần nữa khẳng định mô hình GARCH(1,1) cực kỳ nhạy bén và ưu việt trong việc đo lường rủi ro (risk measurement) của cổ phiếu FPT.
 
-Giá cổ phiếu thường không dừng và có xu hướng thay đổi theo thời gian. Do đó, trước khi xây dựng mô hình GARCH, ta chuyển giá đóng cửa sang log return:
+## 5.3. Bàn luận và So sánh Mô hình (Results & Discussion)
+Kết hợp số liệu từ `model_comparison.csv`:
+* Đối với bài toán **dự báo mức giá trung bình (Mean Forecast)**: Thuật toán ARIMA (RMSE: 2,016.99, MAPE: 2.19%) cho độ chính xác cao hơn so với mô hình Exponential Smoothing - ETS (RMSE: 2,099.80, MAPE: 2.29%). 
+* Đối với bài toán **dự báo rủi ro (Volatility Forecast)**: Mô hình GARCH(1,1) cho điểm số thông tin (AIC: -5.5589, BIC: -5.5508) cực kỳ nhỏ và âm sâu, minh chứng cho một mô hình vừa vặn (goodness-of-fit) và tối ưu.
 
-$$
-r_t = log(P_t) - log(P_{t-1})
-$$
-
-Trong đó:
-- $P_t$ là giá đóng cửa tại thời điểm $t$
-- $r_t$ là lợi suất log tại thời điểm $t$
-
-Log return thường ổn định hơn chuỗi giá gốc và phù hợp hơn cho phân tích volatility.
-
-## 3. Kết quả mô hình GARCH(1,1)
-
-Mô hình GARCH(1,1) được ước lượng trên chuỗi log return của cổ phiếu FPT. Các tham số chính gồm:
-
-- omega: thành phần phương sai nền
-- alpha1: mức độ phản ứng của volatility với cú sốc mới
-- beta1: mức độ duy trì của volatility trong quá khứ
-
-Nếu alpha1 và beta1 đều có ý nghĩa, điều này cho thấy volatility của cổ phiếu FPT không ngẫu nhiên hoàn toàn mà có xu hướng phụ thuộc vào các giai đoạn biến động trước đó.
-
-## 4. Phân tích volatility
-
-Biểu đồ volatility có điều kiện cho thấy các giai đoạn thị trường biến động mạnh và yếu. Những giai đoạn conditional volatility tăng cao phản ánh rủi ro biến động lớn hơn. Đây là thông tin quan trọng đối với nhà đầu tư khi đánh giá mức độ rủi ro của cổ phiếu FPT.
-
-![](../output/figures/garch_volatility.png)
-
-## 5. So sánh mô hình
-
-ARIMA và ETS được sử dụng để dự báo giá đóng cửa, do đó có thể so sánh bằng RMSE và MAPE. Mô hình có RMSE và MAPE thấp hơn được xem là có khả năng dự báo tốt hơn trên tập kiểm tra.
-
-GARCH có mục tiêu khác, chủ yếu dùng để phân tích volatility. Vì vậy, GARCH không nên được so sánh trực tiếp với ARIMA và ETS bằng RMSE/MAPE nếu nhóm chưa xây dựng dự báo giá từ GARCH.
-
-## 6. Thảo luận
-
-Kết quả cho thấy dữ liệu cổ phiếu FPT có đặc điểm phù hợp với phân tích chuỗi thời gian tài chính: giá gốc thường không dừng, trong khi log return phù hợp hơn cho mô hình volatility. Mô hình GARCH(1,1) giúp nhận diện các giai đoạn biến động mạnh, qua đó hỗ trợ đánh giá rủi ro khi đầu tư cổ phiếu FPT.
+=> **Khuyến nghị áp dụng:** Trong thực tiễn đầu tư, nên sử dụng kết hợp ARIMA để định hướng giá mua/bán kỳ vọng, đồng thời sử dụng ranh giới của GARCH(1,1) để tính toán Value at Risk (VaR), quản trị rủi ro và xác định mức cắt lỗ hợp lý.
