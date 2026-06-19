@@ -8,18 +8,28 @@ Trong dự án này, chuỗi dữ liệu lịch sử giá cổ phiếu FPT đư�
 
 ### 4.2.1. Các mô hình cơ sở (Benchmarks)
 - **Mô hình Naive (Random Walk):** Dự báo mức giá tương lai bằng đúng giá trị ở quan sát cuối cùng của tập huấn luyện. Mô hình này giả định giá cổ phiếu là một bước đi ngẫu nhiên không thể dự báo.
+  $$ \hat{y}_{t+h|t} = y_t $$
 - **Mô hình Drift:** Một biến thể của Random Walk có tính đến độ trượt (drift), tức là cho phép dự báo có xu hướng tăng hoặc giảm tương ứng với tốc độ tăng trưởng trung bình trong tập huấn luyện.
+  $$ \hat{y}_{t+h|t} = y_t + h \left( \frac{y_t - y_1}{t - 1} \right) $$
 
 ### 4.2.2. Mô hình ARIMA
 ARIMA (AutoRegressive Integrated Moving Average) là mô hình tuyến tính phân tích chuỗi thời gian thông qua 3 thành phần:
 - **Tự hồi quy (AR - p):** Dự báo giá trị hiện tại dựa trên $p$ giá trị độ trễ trong quá khứ.
 - **Sai phân (I - d):** Số lần lấy sai phân $d$ cần thiết để chuỗi đạt trạng thái dừng.
 - **Trung bình trượt (MA - q):** Dự báo dựa trên $q$ sai số ngẫu nhiên trong quá khứ.
+
+Phương trình tổng quát của mô hình ARIMA(p,d,q):
+$$ (1 - \phi_1 B - \dots - \phi_p B^p)(1 - B)^d y_t = c + (1 + \theta_1 B + \dots + \theta_q B^q)\varepsilon_t $$
+Trong đó, $B$ là toán tử trễ (Backshift operator), $\phi_i$ là hệ số tự hồi quy, $\theta_i$ là hệ số trung bình trượt, và $\varepsilon_t$ là sai số ngẫu nhiên (nhiễu trắng).
 Mô hình sẽ tự động tìm kiếm bộ tham số (p,d,q) tối ưu bằng hàm `auto.arima()` dựa trên tiêu chí AICc nhỏ nhất.
 
 ### 4.2.3. Các mô hình San bằng mũ (ETS)
-- **ETS cơ bản:** Lựa chọn tự động cấu trúc Error (Sai số), Trend (Xu hướng), và Seasonality (Mùa vụ). Mô hình giúp làm mịn các biến động để nhận diện xu hướng dài hạn.
-- **ETS Damped (Xu hướng tắt dần):** Áp dụng một tham số giảm chấn (damped) nhằm triệt tiêu lực tăng/giảm vô hạn. Mô hình này ngăn ngừa xu hướng tiếp tục kéo dài mãi mãi theo thời gian, phù hợp hơn với thực tế biến động thị trường.
+- **ETS cơ bản:** Lựa chọn tự động cấu trúc Error (Sai số), Trend (Xu hướng), và Seasonality (Mùa vụ). Mô hình giúp làm mịn các biến động để nhận diện xu hướng dài hạn. Ví dụ, mô hình ETS(M,A,N) (Sai số nhân, Xu hướng cộng, Không mùa vụ) có phương trình:
+  $$ \hat{y}_{t+h|t} = (l_t + h b_t) $$
+  Với $l_t$ là mức (level) và $b_t$ là xu hướng (trend).
+- **ETS Damped (Xu hướng tắt dần):** Áp dụng một tham số giảm chấn (damped) $\phi$ ($0 < \phi < 1$) nhằm triệt tiêu lực tăng/giảm vô hạn. Phương trình dự báo trở thành:
+  $$ \hat{y}_{t+h|t} = l_t + (\phi + \phi^2 + \dots + \phi^h) b_t $$
+  Mô hình này ngăn ngừa xu hướng tiếp tục kéo dài mãi mãi theo thời gian, phù hợp hơn với thực tế biến động thị trường.
 
 ## 4.3. Phương pháp đánh giá mô hình
 

@@ -36,7 +36,25 @@ calculate_forecast_metrics <- function(actual, predicted) {
   return(data.frame(rmse = rmse, mae = mae, mape = mape))
 }
 
-# 3. HÀM CHẨN ĐOÁN RESIDUAL
+# 3. HÀM VẼ BIỂU ĐỒ DỰ BÁO
+plot_forecast <- function(forecast_obj, actual, model_name, file_name) {
+  start_time <- end(forecast_obj$x)[1] + 1/frequency(forecast_obj$x)
+  actual_ts <- ts(actual, start = start_time, frequency = frequency(forecast_obj$x))
+  
+  p <- autoplot(forecast_obj) +
+    autolayer(actual_ts, series = "Thực tế", PI = FALSE, color = "red", size = 1) +
+    labs(title = paste("Dự báo", model_name, "vs Thực tế"),
+         y = "Giá đóng cửa (VNĐ)", x = "Thời gian") +
+    theme_minimal() +
+    theme(
+      plot.title = element_text(face = "bold", hjust = 0.5),
+      legend.position = "bottom",
+      legend.title = element_blank()
+    )
+  ggsave(file.path(FIGURE_DIR, file_name), plot = p, width = 10, height = 6, dpi = 300, bg = "white")
+}
+
+# 3.5. HÀM CHẨN ĐOÁN RESIDUAL
 diagnose_forecast_model <- function(model, model_name) {
   res <- residuals(model)
   
@@ -93,21 +111,31 @@ forecast_one_split <- function(train_data, test_data) {
   m_arima$model <- "ARIMA"
   metrics_list[[3]] <- m_arima
   
+  # 4.3.1 SARIMA
+  train_ts_seasonal <- ts(train_data$close, frequency = 5)
+  fit_sarima <- auto.arima(train_ts_seasonal, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
+  fc_sarima <- forecast(fit_sarima, h = h)
+  m_sarima <- calculate_forecast_metrics(actual, fc_sarima$mean)
+  m_sarima$model <- "SARIMA"
+  metrics_list[[4]] <- m_sarima
+  
   # 4.4 ETS
   fit_ets <- ets(train_ts)
   fc_ets <- forecast(fit_ets, h = h)
   m_ets <- calculate_forecast_metrics(actual, fc_ets$mean)
   m_ets$model <- "ETS"
-  metrics_list[[4]] <- m_ets
+  metrics_list[[5]] <- m_ets
   
   # 4.5 ETS Damped
   fit_ets_damped <- ets(train_ts, damped = TRUE)
   fc_ets_damped <- forecast(fit_ets_damped, h = h)
   m_ets_damped <- calculate_forecast_metrics(actual, fc_ets_damped$mean)
   m_ets_damped$model <- "ETS Damped"
-  metrics_list[[5]] <- m_ets_damped
+  metrics_list[[6]] <- m_ets_damped
   
   # 4.6 ARIMAX (Lagged)
+  fit_arimax <- NULL
+  fc_arimax <- NULL
   xreg_train <- as.matrix(train_data %>% select(lag_volume, lag_daily_range, lag_return))
   xreg_test <- as.matrix(test_data %>% select(lag_volume, lag_daily_range, lag_return))
   if(!any(is.na(xreg_train)) && !any(is.na(xreg_test))) {
@@ -115,14 +143,15 @@ forecast_one_split <- function(train_data, test_data) {
     fc_arimax <- forecast(fit_arimax, xreg = xreg_test, h = h)
     m_arimax <- calculate_forecast_metrics(actual, fc_arimax$mean)
     m_arimax$model <- "ARIMAX (Lagged)"
-    metrics_list[[6]] <- m_arimax
+    metrics_list[[7]] <- m_arimax
   }
   
   all_metrics <- bind_rows(metrics_list) %>% select(model, rmse, mae, mape)
   
   return(list(
     metrics = all_metrics,
-    models = list(ARIMA = fit_arima, ETS = fit_ets, ETS_Damped = fit_ets_damped)
+    models = list(ARIMA = fit_arima, SARIMA = fit_sarima, ETS = fit_ets, ETS_Damped = fit_ets_damped, ARIMAX = fit_arimax),
+    forecasts = list(ARIMA = fc_arima, SARIMA = fc_sarima, ETS = fc_ets, ETS_Damped = fc_ets_damped, ARIMAX = fc_arimax)
   ))
 }
 
@@ -188,7 +217,7 @@ if (sys.nframe() == 0) {
       lag_return = dplyr::lag(return, 1)
     )
   
-  df_model <- df %>% filter(!is.na(lag_volume))
+  df_model <- df %>% drop_na(lag_volume, lag_daily_range, lag_return)
   n_total <- nrow(df_model)
   n_test <- 30
   n_train <- n_total - n_test
@@ -204,11 +233,57 @@ if (sys.nframe() == 0) {
   write.csv(final_metrics, file.path(TABLE_DIR, "forecast_metrics.csv"), row.names = FALSE)
   print(paste("Đã xuất", file.path(TABLE_DIR, "forecast_metrics.csv")))
   
+  print("1.5. Lưu biểu đồ, mô hình và trích xuất AIC/BIC...")
+  models <- final_split_results$models
+  forecasts <- final_split_results$forecasts
+  
+  # Lưu các biểu đồ
+  plot_forecast(forecasts$ARIMA, test_data$close, "ARIMA", "arima_forecast.png")
+  plot_forecast(forecasts$SARIMA, test_data$close, "SARIMA", "sarima_forecast.png")
+  plot_forecast(forecasts$ETS, test_data$close, "ETS", "ets_forecast.png")
+  plot_forecast(forecasts$ETS_Damped, test_data$close, "ETS Damped", "ets_damped_forecast.png")
+  if(!is.null(forecasts$ARIMAX)) plot_forecast(forecasts$ARIMAX, test_data$close, "ARIMA+XREG", "arima_xreg_forecast.png")
+  
+  # Lưu mô hình .rds
+  saveRDS(models$ARIMA, file.path(MODEL_DIR, "arima_model.rds"))
+  saveRDS(models$SARIMA, file.path(MODEL_DIR, "sarima_model.rds"))
+  saveRDS(models$ETS, file.path(MODEL_DIR, "ets_model.rds"))
+  saveRDS(models$ETS_Damped, file.path(MODEL_DIR, "ets_damped_model.rds"))
+  if(!is.null(models$ARIMAX)) saveRDS(models$ARIMAX, file.path(MODEL_DIR, "arima_xreg_model.rds"))
+  
+  # Trích xuất AIC/BIC
+  aic_bic_list <- list()
+  extract_aic_bic <- function(model, name, type) {
+    if(!is.null(model)) {
+      return(data.frame(model = name, aic = AIC(model), bic = BIC(model), type = type))
+    }
+    return(NULL)
+  }
+  
+  aic_bic_list[[1]] <- extract_aic_bic(models$ARIMA, "ARIMA", "Base")
+  aic_bic_list[[2]] <- extract_aic_bic(models$SARIMA, "SARIMA", "Improved")
+  aic_bic_list[[3]] <- extract_aic_bic(models$ARIMAX, "ARIMAX (Lagged)", "Improved")
+  aic_bic_list[[4]] <- extract_aic_bic(models$ETS, "ETS", "Base")
+  aic_bic_list[[5]] <- extract_aic_bic(models$ETS_Damped, "ETS Damped", "Improved")
+  
+  model_aic_bic <- bind_rows(aic_bic_list)
+  
+  # Ghép với bảng metrics
+  model_comparison_full <- final_metrics %>%
+    left_join(model_aic_bic, by = "model") %>%
+    select(model, rmse, mape, aic, bic, type)
+    
+  write.csv(model_comparison_full, file.path(TABLE_DIR, "model_aic_bic_comparison.csv"), row.names = FALSE)
+  print(paste("Đã xuất", file.path(TABLE_DIR, "model_aic_bic_comparison.csv")))
+
   print("2. Chẩn đoán phần dư (Residual Diagnostics)...")
-  diag_arima <- diagnose_forecast_model(final_split_results$models$ARIMA, "ARIMA")
-  diag_ets <- diagnose_forecast_model(final_split_results$models$ETS, "ETS")
-  diag_ets_d <- diagnose_forecast_model(final_split_results$models$ETS_Damped, "ETS Damped")
-  diag_all <- bind_rows(diag_arima, diag_ets, diag_ets_d)
+  diag_arima <- diagnose_forecast_model(models$ARIMA, "ARIMA")
+  diag_sarima <- diagnose_forecast_model(models$SARIMA, "SARIMA")
+  diag_ets <- diagnose_forecast_model(models$ETS, "ETS")
+  diag_ets_d <- diagnose_forecast_model(models$ETS_Damped, "ETS Damped")
+  diag_list <- list(diag_arima, diag_sarima, diag_ets, diag_ets_d)
+  if(!is.null(models$ARIMAX)) diag_list[[5]] <- diagnose_forecast_model(models$ARIMAX, "ARIMAX")
+  diag_all <- bind_rows(diag_list)
   write.csv(diag_all, file.path(TABLE_DIR, "forecast_diagnostics.csv"), row.names = FALSE)
   print(paste("Đã xuất", file.path(TABLE_DIR, "forecast_diagnostics.csv")))
   
