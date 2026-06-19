@@ -77,9 +77,13 @@ Không nộp trước khi tất cả mục sau đạt:
 
 Ba người làm song song trên branch riêng. Mỗi pull request phải kèm danh sách output thay đổi và bằng chứng đã chạy.
 
+Kế hoạch riêng để Người 2 và Người 3 làm trong lúc chờ dữ liệu cuối: [`docs/ke_hoach_nguoi_2_3_hom_nay.md`](ke_hoach_nguoi_2_3_hom_nay.md).
+
 ### Thành viên 1: Dữ liệu, tái lập và trực quan hóa
 
 **File phụ trách:** notebook, `R/01_data_cleaning.R`, `R/02_visualization.R`, `data/README_data.md`, phần Data/Visualization.
+
+Hướng dẫn cầm tay chỉ việc, code và prompt soạn sẵn: [`docs/guide_nguoi_1.md`](guide_nguoi_1.md).
 
 - [ ] Xác minh nguồn dữ liệu thật; sửa notebook để tạo đúng schema/giai đoạn hiện tại.
 - [ ] Thêm toàn bộ data-quality checks và bảng `data_quality_report.csv`.
@@ -167,4 +171,3 @@ rmarkdown::render("report/report.Rmd", output_format = "word_document")
 - Không tạo thêm nhiều model chỉ để đủ số lượng; ba model được chẩn đoán đúng có giá trị hơn tám model chỉ có AIC.
 - Không dành thời gian chỉnh màu/font trước khi pipeline, báo cáo và nguồn dữ liệu nhất quán.
 - Không copy bảng thủ công từ Excel vào Word nếu R Markdown có thể sinh trực tiếp.
-
