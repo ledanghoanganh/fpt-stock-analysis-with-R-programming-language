@@ -1,1053 +1,170 @@
-# FPT Stock Time Series Project
-
-## 1. Thông tin chung
-
-**Đề tài:** Dự báo giá và phân tích biến động cổ phiếu FPT bằng mô hình chuỗi thời gian.
-
-**Môn học:** Lập Trình R Cho Phân Tích.
-
-**Mục tiêu của project:**
-
-- Thu thập dữ liệu lịch sử giá cổ phiếu FPT.
-- Làm sạch và mô tả dữ liệu.
-- Trực quan hóa biến động giá và lợi suất.
-- Kiểm tra tính dừng của chuỗi thời gian.
-- Xây dựng mô hình dự báo giá bằng ARIMA và ETS.
-- Phân tích biến động/rủi ro bằng mô hình GARCH.
-- So sánh mô hình, viết kết quả, thảo luận và kết luận.
-- Xuất báo cáo cuối dạng Word.
-
-Project này được chia thành 3 phần tương ứng với 3 thành viên. Mỗi người làm đúng phần được phân công, xuất đúng file đầu ra, sau đó Người 3 sẽ tổng hợp báo cáo cuối.
-
----
-
-## 2. Nguyên tắc làm việc chung
-
-Trước khi code, cả nhóm cần thống nhất các nguyên tắc sau:
-
-1. **Không dùng đường dẫn tuyệt đối.**  
-   Không viết kiểu:
-
-   ```r
-   read_csv("C:/Users/ABC/Desktop/FPT_stock_data.csv")
-   ```
-
-   Phải dùng đường dẫn tương đối từ thư mục gốc project:
-
-   ```r
-   read_csv("data/processed/fpt_clean.csv")
-   ```
-
-2. **Mọi file `.R` phải bắt đầu bằng:**
-
-   ```r
-   source("R/00_config.R")
-   ```
-
-   File `00_config.R` chứa cấu hình đường dẫn và thư viện dùng chung.
-
-3. **Không sửa trực tiếp phần của người khác nếu chưa thống nhất.**  
-   Nếu cần chỉnh file của người khác, phải báo trước trong nhóm.
-
-4. **Mỗi người chỉ cần tạo đúng output của mình.**  
-   Người sau sẽ đọc output đó để tiếp tục làm. Ví dụ:
-   - Người 1 tạo `data/processed/fpt_clean.csv`.
-   - Người 2 đọc `fpt_clean.csv`, sau đó tạo `forecast_metrics.csv`.
-   - Người 3 đọc `forecast_metrics.csv` và kết quả GARCH để viết báo cáo.
-
-5. **Không commit file rác.**  
-   Không đưa vào Git các file như `.Rhistory`, `.RData`, file tạm, file lỗi, ảnh thừa hoặc bản báo cáo nháp quá nhiều phiên bản.
-
-6. **Tên file không dùng dấu tiếng Việt và không dùng khoảng trắng.**  
-   Nên dùng:
-
-   ```text
-   fpt_clean.csv
-   close_price.png
-   garch_volatility.png
-   forecast_metrics.csv
-   ```
-
-   Không nên dùng:
-
-   ```text
-   dữ liệu sạch.csv
-   biểu đồ giá đóng cửa.png
-   ```
-
----
-
-## 3. Cấu trúc thư mục của repo
-
-Repo cần có cấu trúc như sau:
-
-```text
-fpt-stock-time-series/
-│
-├── README.md
-├── .gitignore
-├── FPT_Stock_TimeSeries.Rproj
-│
-├── data/
-│   ├── raw/
-│   │   └── FPT_stock_data.csv
-│   ├── processed/
-│   │   └── fpt_clean.csv
-│   └── README_data.md
-│
-├── notebooks/
-│   └── 01_scrape_fpt_colab.ipynb
-│
-├── R/
-│   ├── 00_config.R
-│   ├── 01_data_cleaning.R
-│   ├── 02_visualization.R
-│   ├── 03_stationarity_arima_ets.R
-│   ├── 04_garch_volatility.R
-│   ├── 05_model_comparison.R
-│   └── 06_export_report_tables.R
-│
-├── output/
-│   ├── figures/
-│   │   ├── close_price.png
-│   │   ├── returns.png
-│   │   ├── arima_forecast.png
-│   │   ├── ets_forecast.png
-│   │   └── garch_volatility.png
-│   ├── tables/
-│   │   ├── data_summary.csv
-│   │   ├── stationarity_tests.csv
-│   │   ├── forecast_metrics.csv
-│   │   ├── garch_summary.csv
-│   │   └── model_comparison.csv
-│   └── models/
-│       ├── arima_model.rds
-│       ├── ets_model.rds
-│       └── garch_model.rds
-│
-├── report/
-│   ├── report.Rmd
-│   ├── report.docx
-│   └── sections/
-│       ├── 01_introduction.md
-│       ├── 02_data.md
-│       ├── 03_visualization.md
-│       ├── 04_modeling_arima_ets.md
-│       ├── 05_garch_results_discussion.md
-│       └── 06_conclusion.md
-│
-└── docs/
-    ├── rubric/
-    └── references/
-```
-
-Ý nghĩa các thư mục:
-
-| Thư mục | Ý nghĩa |
-|---|---|
-| `data/raw/` | Dữ liệu gốc vừa cào về, chưa xử lý. |
-| `data/processed/` | Dữ liệu đã làm sạch, dùng cho phân tích R. |
-| `notebooks/` | Notebook Python/Colab để thu thập dữ liệu. |
-| `R/` | Toàn bộ mã nguồn R. |
-| `output/figures/` | Biểu đồ xuất ra từ R. |
-| `output/tables/` | Bảng kết quả, bảng thống kê, bảng metrics. |
-| `output/models/` | Model đã lưu bằng `.rds`. |
-| `report/` | Báo cáo cuối. |
-| `report/sections/` | Các phần báo cáo do từng người viết riêng. |
-| `docs/` | Rubric, tài liệu tham khảo, đề bài. |
-
----
-
-## 4. Cài đặt môi trường R
-
-Mở RStudio tại thư mục gốc project, sau đó chạy một lần:
-
-```r
-install.packages(c(
-  "tidyverse",
-  "lubridate",
-  "forecast",
-  "tseries",
-  "rugarch",
-  "knitr",
-  "rmarkdown"
-))
-```
-
-Ý nghĩa các package:
-
-| Package | Dùng để làm gì? |
-|---|---|
-| `tidyverse` | Đọc, xử lý, làm sạch dữ liệu, vẽ ggplot. |
-| `lubridate` | Xử lý ngày tháng. |
-| `forecast` | Xây dựng ARIMA, ETS và dự báo. |
-| `tseries` | Kiểm định ADF. |
-| `rugarch` | Xây dựng mô hình GARCH. |
-| `knitr`, `rmarkdown` | Knit báo cáo `.Rmd` sang Word. |
-
----
-
-## 5. File cấu hình chung `R/00_config.R`
-
-File này bắt buộc phải có. Nội dung đề xuất:
-
-```r
-# 00_config.R
-# Cấu hình chung cho toàn bộ project
-
-library(tidyverse)
-library(lubridate)
-
-RAW_DATA_PATH <- "data/raw/FPT_stock_data.csv"
-CLEAN_DATA_PATH <- "data/processed/fpt_clean.csv"
-
-FIGURE_DIR <- "output/figures"
-TABLE_DIR <- "output/tables"
-MODEL_DIR <- "output/models"
-
-REPORT_DIR <- "report"
-SECTION_DIR <- "report/sections"
-
-dir.create("data/raw", recursive = TRUE, showWarnings = FALSE)
-dir.create("data/processed", recursive = TRUE, showWarnings = FALSE)
-dir.create(FIGURE_DIR, recursive = TRUE, showWarnings = FALSE)
-dir.create(TABLE_DIR, recursive = TRUE, showWarnings = FALSE)
-dir.create(MODEL_DIR, recursive = TRUE, showWarnings = FALSE)
-dir.create(REPORT_DIR, recursive = TRUE, showWarnings = FALSE)
-dir.create(SECTION_DIR, recursive = TRUE, showWarnings = FALSE)
-```
-
-Sau đó, đầu mỗi file R phải có:
-
-```r
-source("R/00_config.R")
-```
-
----
-
-## 6. Chuẩn dữ liệu chung cho cả nhóm
-
-Người 1 phải tạo file dữ liệu sạch tại:
-
-```text
-data/processed/fpt_clean.csv
-```
-
-File này là đầu vào bắt buộc cho Người 2 và Người 3.
-
-### 6.1. Các cột bắt buộc
-
-`fpt_clean.csv` cần có tối thiểu các cột sau:
-
-| Cột | Kiểu dữ liệu | Ý nghĩa |
-|---|---|---|
-| `date` | Date hoặc chuỗi dạng `YYYY-MM-DD` | Ngày giao dịch. |
-| `open` | numeric | Giá mở cửa. |
-| `high` | numeric | Giá cao nhất trong ngày. |
-| `low` | numeric | Giá thấp nhất trong ngày. |
-| `close` | numeric | Giá đóng cửa. |
-| `volume` | numeric | Khối lượng giao dịch. |
-| `log_close` | numeric | Log tự nhiên của giá đóng cửa. |
-| `return` | numeric | Log return, tính bằng `log_close - lag(log_close)`. |
-
-### 6.2. Công thức cần thống nhất
-
-```r
-log_close = log(close)
-return = log_close - lag(log_close)
-```
-
-### 6.3. Yêu cầu kiểm tra dữ liệu sạch
-
-Trước khi Người 1 bàn giao dữ liệu, cần đảm bảo:
-
-- Không trùng ngày giao dịch.
-- Cột `date` đã được sắp xếp tăng dần.
-- Cột `close` không bị thiếu dữ liệu.
-- Các cột giá và `volume` là kiểu số.
-- `return` chỉ được phép có `NA` ở dòng đầu tiên do dùng `lag()`.
-
-Có thể kiểm tra bằng R:
-
-```r
-fpt <- read_csv("data/processed/fpt_clean.csv")
-
-sum(is.na(fpt$close))
-sum(duplicated(fpt$date))
-str(fpt)
-summary(fpt)
-```
-
-Nếu `sum(is.na(fpt$close))` lớn hơn 0 hoặc `sum(duplicated(fpt$date))` lớn hơn 0 thì dữ liệu chưa đạt yêu cầu.
-
----
-
-## 7. Phân công chi tiết
-
-## 7.1. Người 1 - Data + Visualization
-
-### Nhiệm vụ chính
-
-Người 1 phụ trách toàn bộ phần dữ liệu và trực quan hóa ban đầu.
-
-Cần làm:
-
-- Thu thập dữ liệu bằng notebook Python/Colab.
-- Lưu dữ liệu gốc vào `data/raw/FPT_stock_data.csv`.
-- Làm sạch dữ liệu trong R.
-- Kiểm tra dữ liệu thiếu.
-- Kiểm tra dữ liệu trùng.
-- Tạo thống kê mô tả.
-- Tạo các biểu đồ cơ bản.
-- Viết mục `Data` và `Visualization` trong báo cáo.
-
-### File phụ trách
-
-```text
-notebooks/01_scrape_fpt_colab.ipynb
-R/01_data_cleaning.R
-R/02_visualization.R
-report/sections/02_data.md
-report/sections/03_visualization.md
-```
-
-### Output bắt buộc
-
-```text
-data/processed/fpt_clean.csv
-output/tables/data_summary.csv
-output/figures/close_price.png
-output/figures/returns.png
-```
-
-### Checklist trước khi báo xong
-
-Người 1 chỉ báo hoàn thành khi đã có đủ:
-
-- [ ] `data/raw/FPT_stock_data.csv`
-- [ ] `data/processed/fpt_clean.csv`
-- [ ] `output/tables/data_summary.csv`
-- [ ] `output/figures/close_price.png`
-- [ ] `output/figures/returns.png`
-- [ ] Viết xong `report/sections/02_data.md`
-- [ ] Viết xong `report/sections/03_visualization.md`
-
----
-
-## 7.2. Người 2 - Modeling ARIMA/ETS
-
-### Nhiệm vụ chính
-
-Người 2 phụ trách kiểm tra tính dừng và xây dựng mô hình dự báo giá.
-
-Cần làm:
-
-- Đọc dữ liệu sạch từ `data/processed/fpt_clean.csv`.
-- Kiểm định ADF cho chuỗi giá gốc hoặc chuỗi log giá.
-- Thực hiện log transform nếu cần.
-- Thực hiện differencing nếu chuỗi chưa dừng.
-- Xây dựng mô hình ARIMA.
-- Xây dựng mô hình ETS.
-- Dự báo trên tập test.
-- Tính RMSE và MAPE cho ARIMA và ETS.
-- Vẽ biểu đồ dự báo.
-- Viết mục `Modeling (ARIMA, ETS)`.
-
-### File phụ trách
-
-```text
-R/03_stationarity_arima_ets.R
-report/sections/04_modeling_arima_ets.md
-```
-
-### Output bắt buộc
-
-```text
-output/tables/stationarity_tests.csv
-output/tables/forecast_metrics.csv
-output/figures/arima_forecast.png
-output/figures/ets_forecast.png
-output/models/arima_model.rds
-output/models/ets_model.rds
-```
-
-### Chuẩn file `forecast_metrics.csv`
-
-File này cần có dạng:
-
-```text
-model,rmse,mape
-ARIMA,...,...
-ETS,...,...
-```
-
-Ví dụ:
-
-```text
-model,rmse,mape
-ARIMA,1532.25,2.14
-ETS,1720.48,2.51
-```
-
-### Checklist trước khi báo xong
-
-Người 2 chỉ báo hoàn thành khi đã có đủ:
-
-- [ ] Đã đọc được `data/processed/fpt_clean.csv`
-- [ ] `output/tables/stationarity_tests.csv`
-- [ ] `output/tables/forecast_metrics.csv`
-- [ ] `output/figures/arima_forecast.png`
-- [ ] `output/figures/ets_forecast.png`
-- [ ] `output/models/arima_model.rds`
-- [ ] `output/models/ets_model.rds`
-- [ ] Viết xong `report/sections/04_modeling_arima_ets.md`
-
----
-
-## 7.3. Người 3 - GARCH + Results & Discussion + Tổng hợp báo cáo
-
-### Nhiệm vụ chính
-
-Người 3 phụ trách mô hình GARCH, phân tích volatility, so sánh mô hình, viết kết quả/thảo luận, viết kết luận và ghép báo cáo cuối.
-
-Cần làm:
-
-- Đọc dữ liệu sạch từ `data/processed/fpt_clean.csv`.
-- Xây dựng mô hình GARCH(1,1) trên chuỗi `return`.
-- Phân tích volatility của cổ phiếu FPT.
-- Xuất bảng tham số GARCH.
-- Xuất biểu đồ conditional volatility.
-- Đọc `forecast_metrics.csv` của Người 2.
-- So sánh ARIMA và ETS bằng RMSE/MAPE.
-- Giải thích rõ vai trò của GARCH: GARCH dùng cho volatility, không so sánh trực tiếp với ARIMA/ETS bằng RMSE/MAPE nếu không dùng GARCH để dự báo giá.
-- Viết mục `Results & Discussion`.
-- Viết mục `Conclusion`.
-- Ghép báo cáo cuối thành `report/report.docx`.
-
-### File phụ trách
-
-```text
-R/04_garch_volatility.R
-R/05_model_comparison.R
-R/06_export_report_tables.R
-report/sections/05_garch_results_discussion.md
-report/sections/06_conclusion.md
-report/report.Rmd
-```
-
-### Output bắt buộc
-
-```text
-output/tables/garch_summary.csv
-output/tables/model_comparison.csv
-output/figures/garch_volatility.png
-output/models/garch_model.rds
-report/report.docx
-```
-
-### Chuẩn file `garch_summary.csv`
-
-File này nên có dạng:
-
-```text
-parameter,estimate
-mu,...
-omega,...
-alpha1,...
-beta1,...
-```
-
-### Chuẩn file `model_comparison.csv`
-
-File này nên có dạng:
-
-```text
-model,rmse,mape,purpose
-ARIMA,...,...,Dự báo giá đóng cửa
-ETS,...,...,Dự báo giá đóng cửa
-GARCH(1,1),NA,NA,Phân tích volatility
-```
-
-### Checklist trước khi báo xong
-
-Người 3 chỉ báo hoàn thành khi đã có đủ:
-
-- [ ] Đã đọc được `data/processed/fpt_clean.csv`
-- [ ] Đã chạy được mô hình GARCH
-- [ ] `output/tables/garch_summary.csv`
-- [ ] `output/figures/garch_volatility.png`
-- [ ] `output/models/garch_model.rds`
-- [ ] Đã đọc được `output/tables/forecast_metrics.csv`
-- [ ] `output/tables/model_comparison.csv`
-- [ ] Viết xong `report/sections/05_garch_results_discussion.md`
-- [ ] Viết xong `report/sections/06_conclusion.md`
-- [ ] Knit được `report/report.docx`
-
----
-
-## 8. Thứ tự chạy toàn bộ project
-
-Chạy project theo đúng thứ tự sau:
-
-### Bước 1: Thu thập dữ liệu bằng Python/Colab
-
-Mở notebook:
-
-```text
-notebooks/01_scrape_fpt_colab.ipynb
-```
-
-Chạy notebook để lấy dữ liệu FPT, sau đó lưu file vào:
-
-```text
-data/raw/FPT_stock_data.csv
-```
-
-### Bước 2: Làm sạch dữ liệu
-
-Chạy:
-
-```r
-source("R/01_data_cleaning.R")
-```
-
-Kết quả cần có:
-
-```text
-data/processed/fpt_clean.csv
-output/tables/data_summary.csv
-```
-
-### Bước 3: Trực quan hóa dữ liệu
-
-Chạy:
-
-```r
-source("R/02_visualization.R")
-```
-
-Kết quả cần có:
-
-```text
-output/figures/close_price.png
-output/figures/returns.png
-```
-
-### Bước 4: Kiểm định tính dừng, ARIMA và ETS
-
-Chạy:
-
-```r
-source("R/03_stationarity_arima_ets.R")
-```
-
-Kết quả cần có:
-
-```text
-output/tables/stationarity_tests.csv
-output/tables/forecast_metrics.csv
-output/figures/arima_forecast.png
-output/figures/ets_forecast.png
-output/models/arima_model.rds
-output/models/ets_model.rds
-```
-
-### Bước 5: GARCH và volatility
-
-Chạy:
-
-```r
-source("R/04_garch_volatility.R")
-```
-
-Kết quả cần có:
-
-```text
-output/tables/garch_summary.csv
-output/figures/garch_volatility.png
-output/models/garch_model.rds
-```
-
-### Bước 6: So sánh mô hình
-
-Chạy:
-
-```r
-source("R/05_model_comparison.R")
-```
-
-Kết quả cần có:
-
-```text
-output/tables/model_comparison.csv
-```
-
-### Bước 7: Knit báo cáo Word
-
-Mở:
-
-```text
-report/report.Rmd
-```
-
-Bấm **Knit** trong RStudio hoặc chạy:
-
-```r
-rmarkdown::render("report/report.Rmd", output_format = "word_document")
-```
-
-Kết quả cuối:
-
-```text
-report/report.docx
-```
-
----
-
-## 9. Quy ước viết code R
-
-### 9.1. Cách đặt tên biến
-
-Dùng `snake_case`:
-
-```r
-fpt_clean
-forecast_metrics
-garch_summary
-train_data
-test_data
-```
-
-Không nên dùng:
-
-```r
-FptClean
-forecastMetrics
-data1
-aaa
-```
-
-### 9.2. Cách comment code
-
-Mỗi phần lớn nên có comment rõ ràng:
-
-```r
-# 1. Đọc dữ liệu
-# 2. Kiểm tra dữ liệu thiếu
-# 3. Tính log return
-# 4. Xuất dữ liệu sạch
-```
-
-### 9.3. Cách xuất bảng
-
-Luôn xuất bảng bằng `write_csv()`:
-
-```r
-write_csv(data_summary, file.path(TABLE_DIR, "data_summary.csv"))
-```
-
-### 9.4. Cách lưu biểu đồ
-
-Luôn lưu biểu đồ bằng `ggsave()`:
-
-```r
-ggsave(
-  filename = file.path(FIGURE_DIR, "close_price.png"),
-  plot = p_close,
-  width = 10,
-  height = 5
-)
-```
-
-### 9.5. Cách lưu model
-
-Luôn lưu model bằng `saveRDS()`:
-
-```r
-saveRDS(model_arima, file.path(MODEL_DIR, "arima_model.rds"))
-```
-
-Đọc lại model bằng:
-
-```r
-model_arima <- readRDS(file.path(MODEL_DIR, "arima_model.rds"))
-```
-
----
-
-## 10. Quy ước viết báo cáo
-
-Báo cáo được chia thành nhiều file nhỏ trong:
-
-```text
-report/sections/
-```
-
-Mỗi người viết đúng section của mình.
-
-### Người 1 viết
-
-```text
-report/sections/02_data.md
-report/sections/03_visualization.md
-```
-
-Nội dung cần có:
-
-- Dữ liệu lấy từ đâu.
-- Dữ liệu có những cột nào.
-- Dữ liệu có bao nhiêu dòng.
-- Giai đoạn dữ liệu từ ngày nào đến ngày nào.
-- Có thiếu dữ liệu không.
-- Có trùng dữ liệu không.
-- Nhận xét thống kê mô tả.
-- Nhận xét biểu đồ giá đóng cửa.
-- Nhận xét biểu đồ return.
-
-### Người 2 viết
-
-```text
-report/sections/04_modeling_arima_ets.md
-```
-
-Nội dung cần có:
-
-- Vì sao phải kiểm tra tính dừng.
-- Kết quả kiểm định ADF.
-- Vì sao dùng log transform.
-- Vì sao dùng differencing.
-- Mô hình ARIMA được chọn là gì.
-- Mô hình ETS được chọn là gì.
-- So sánh RMSE/MAPE của ARIMA và ETS.
-- Nhận xét mô hình nào dự báo tốt hơn.
-
-### Người 3 viết
-
-```text
-report/sections/05_garch_results_discussion.md
-report/sections/06_conclusion.md
-```
-
-Nội dung cần có:
-
-- Vì sao dùng GARCH.
-- GARCH dùng chuỗi nào làm đầu vào.
-- Ý nghĩa các tham số `omega`, `alpha1`, `beta1`.
-- Nhận xét volatility của FPT.
-- So sánh vai trò của ARIMA, ETS và GARCH.
-- Thảo luận kết quả chung.
-- Kết luận.
-- Hạn chế của đề tài.
-- Hướng phát triển.
-
----
-
-## 11. Khung `report/report.Rmd`
-
-File `report/report.Rmd` nên có dạng:
-
-````markdown
----
-title: "Dự báo giá và phân tích biến động cổ phiếu FPT bằng mô hình chuỗi thời gian"
-author: "Nhóm ..."
-date: "`r Sys.Date()`"
-output:
-  word_document:
-    toc: true
-    toc_depth: 3
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(
-  echo = FALSE,
-  warning = FALSE,
-  message = FALSE
-)
-
-library(tidyverse)
-```
-
-```{r child="sections/01_introduction.md"}
-```
-
-```{r child="sections/02_data.md"}
-```
-
-```{r child="sections/03_visualization.md"}
-```
-
-```{r child="sections/04_modeling_arima_ets.md"}
-```
-
-```{r child="sections/05_garch_results_discussion.md"}
-```
-
-```{r child="sections/06_conclusion.md"}
-```
-````
-
----
-
-## 12. Git workflow cho cả nhóm
-
-### 12.1. Lần đầu clone repo
-
-```bash
-git clone <link-repo>
-cd fpt-stock-time-series
-```
-
-### 12.2. Mỗi người tạo branch riêng
-
-Người 1:
-
-```bash
-git checkout -b person1-data-visualization
-```
-
-Người 2:
-
-```bash
-git checkout -b person2-arima-ets
-```
-
-Người 3:
-
-```bash
-git checkout -b person3-garch-report
-```
-
-### 12.3. Trước khi làm luôn kéo code mới nhất
-
-```bash
-git checkout main
-git pull origin main
-```
-
-Sau đó chuyển sang branch của mình:
-
-```bash
-git checkout person3-garch-report
-```
-
-### 12.4. Commit sau mỗi phần đã chạy được
-
-```bash
-git status
-git add .
-git commit -m "Add GARCH volatility analysis"
-git push origin person3-garch-report
-```
-
-### 12.5. Quy ước message commit
-
-Nên viết rõ nội dung:
-
-```text
-Add data cleaning script
-Add visualization figures
-Add ARIMA and ETS modeling
-Add GARCH volatility analysis
-Update results discussion
-Update final report
-```
-
-Không nên viết:
-
-```text
-fix
-update
-abc
-lan 1
-bai moi
-```
-
----
-
-## 13. Checklist trước khi nộp bài
-
-Trước khi nộp, cả nhóm kiểm tra đủ các mục sau:
-
-### Dữ liệu
-
-- [ ] Có `data/raw/FPT_stock_data.csv`.
-- [ ] Có `data/processed/fpt_clean.csv`.
-- [ ] Dữ liệu sạch không bị thiếu `close`.
-- [ ] Dữ liệu sạch không trùng `date`.
-- [ ] Dữ liệu được sắp xếp tăng dần theo `date`.
-
-### Bảng kết quả
-
-- [ ] Có `output/tables/data_summary.csv`.
-- [ ] Có `output/tables/stationarity_tests.csv`.
-- [ ] Có `output/tables/forecast_metrics.csv`.
-- [ ] Có `output/tables/garch_summary.csv`.
-- [ ] Có `output/tables/model_comparison.csv`.
-
-### Hình ảnh
-
-- [ ] Có `output/figures/close_price.png`.
-- [ ] Có `output/figures/returns.png`.
-- [ ] Có `output/figures/arima_forecast.png`.
-- [ ] Có `output/figures/ets_forecast.png`.
-- [ ] Có `output/figures/garch_volatility.png`.
-
-### Model
-
-- [ ] Có `output/models/arima_model.rds`.
-- [ ] Có `output/models/ets_model.rds`.
-- [ ] Có `output/models/garch_model.rds`.
+# Hướng dẫn hoàn thành đồ án FPT Stock Analysis
+
+> Cập nhật sau khi audit toàn bộ repository ngày 19/06/2026.  
+> Mục tiêu: tạo một bài nộp tái lập được, đúng rubric và có khả năng đạt từ 85/100 trở lên.
+
+## 1. Kết luận nhanh
+
+Dự án **đúng hướng về chủ đề và quy trình**: có dữ liệu thực tế, làm sạch bằng R, trực quan hóa, kiểm định tính dừng, hai mô hình dự báo giá và một mô hình volatility. Tuy nhiên, dự án **chưa ở trạng thái có thể nộp** vì báo cáo Word hiện là file rỗng, `report.Rmd` chưa ghép nội dung, thiếu PowerPoint, nguồn dữ liệu không nhất quán và quy trình thu thập không tái lập được.
+
+Nếu chấm repository ở trạng thái hiện tại, điểm hợp lý chỉ khoảng **58-65/100**. Nếu hoàn thành toàn bộ mục P0 và P1 trong tài liệu này, mức khả thi là **85-92/100**. Đây là ước lượng, không phải điểm chính thức của giảng viên.
+
+## 2. Chấm thử theo rubric
+
+| Tiêu chí | Trọng số | Điểm hiện tại | Sau khi sửa | Nhận định chính |
+|---|---:|---:|---:|---|
+| Hình thức báo cáo | 10 | 2 | 9 | `report.docx` 0 byte; Rmd rỗng; thiếu nhiều mục bắt buộc và PPTX |
+| Làm việc nhóm | 10 | 6 | 9 | Có phân công, nhưng thiếu tên thật, tiến độ, contributions và peer assessment |
+| Dữ liệu và bài toán | 10 | 5 | 9 | Bài toán hợp lý; nguồn và quy trình thu thập đang mâu thuẫn, còn 173 dòng volume bằng 0 |
+| Sử dụng R và thống kê | 20 | 15 | 18 | Có pipeline R và ADF; thiếu kiểm tra chất lượng, chẩn đoán và script chạy toàn bộ ổn định |
+| Trực quan hóa | 20 | 13 | 18 | Có 7 hình, nhưng trục thời gian dày, thang giá sai và diễn giải có chỗ vượt quá bằng chứng |
+| Mô hình dữ liệu | 30 | 20 | 27 | Có ARIMA, ETS, GARCH; thiếu benchmark, residual diagnostics và đánh giá GARCH ngoài mẫu |
+| **Tổng** | **100** | **61** | **90** | Mục tiêu 90 chỉ đạt khi có artifact cuối và kiểm chứng chéo |
+
+## 3. Các điều kiện chặn nộp bài (P0)
+
+Không nộp trước khi tất cả mục sau đạt:
+
+- [ ] `report/report.docx` mở được và có dung lượng lớn hơn 0 byte.
+- [ ] Có file trình bày `.pptx` theo yêu cầu trong PDF đề bài.
+- [ ] `report/report.Rmd` tạo được báo cáo từ đầu đến cuối, không còn các chunk trống.
+- [ ] Báo cáo có đủ: Abstract, Introduction, Data, Visualization, Modeling, Results & Discussion, Conclusion, Appendices, Contributions, References, Peer Assessment.
+- [ ] Thống nhất duy nhất một nguồn dữ liệu. Hiện README ghi `vnstock`, notebook dùng API TCBS, báo cáo ghi Yahoo Finance.
+- [ ] Notebook tái tạo đúng `data/raw/FPT_stock_data.csv`: thời gian 2015-01-01 đến 2026-06-08 và tên cột `date`.
+- [ ] Ghi đúng tên 3 thành viên, mã sinh viên và nhiệm vụ; bỏ `Nhóm ...`, `Người 1/2/3` trong bản nộp.
+- [ ] Có một entry point như `R/run_all.R` để chạy các script theo thứ tự; đây cũng là file mã nguồn R chính để nộp kèm.
+- [ ] Chạy lại toàn bộ trên một máy khác hoặc một R session sạch và lưu log kiểm thử.
+
+## 4. Các lỗi kỹ thuật phải sửa (P1)
+
+### Dữ liệu và khả năng tái lập
+
+1. Chọn nguồn thật sự đã sinh ra dữ liệu hiện tại và trích dẫn URL/ngày truy cập. Không được tuyên bố `vnstock` nếu file thực tế đến từ Yahoo/TCBS.
+2. Điều tra 173 dòng `volume == 0`. Báo cáo hiện nói đã loại ngày nghỉ nhưng `R/01_data_cleaning.R` không loại. Quyết định giữ hoặc loại phải có lý do và số liệu trước/sau.
+3. Kiểm tra: ngày trùng, thứ tự ngày, `high >= open/close`, `low <= open/close`, giá dương, volume không âm và missing values.
+4. Chỉ dùng một biến lợi suất, ưu tiên log return `return`. Hiện visualization tạo thêm simple return `returns`, gây không nhất quán với GARCH.
+5. Giải thích giá đã điều chỉnh hay chưa. Không gọi là adjusted close nếu nguồn không cung cấp bằng chứng.
+
+### Phân tích và mô hình
+
+1. Thêm benchmark naive/random-walk. ARIMA/ETS chỉ được gọi là tốt khi thắng benchmark ngoài mẫu, không chỉ vì MAPE nhỏ.
+2. Dùng rolling-origin cross-validation hoặc ít nhất nhiều cửa sổ test; một cửa sổ 30 ngày là bằng chứng yếu.
+3. ARIMA/ETS: báo cáo `checkresiduals()`, Ljung-Box, ACF phần dư và kiểm tra khoảng dự báo.
+4. Trước GARCH: kiểm định ARCH-LM trên return hoặc phần dư mean model; sau GARCH: Ljung-Box trên standardized residuals và residuals bình phương.
+5. So sánh sGARCH-Normal với sGARCH-Student-t, eGARCH và GJR-GARCH bằng cùng dữ liệu. Không so AIC của GARCH trực tiếp với RMSE của mô hình giá.
+6. Nếu làm ARIMA+XREG, không dùng `volume`/`daily_range` tương lai thật ở tập test như thể đã biết lúc dự báo. Phải dự báo xreg, dùng biến trễ, hoặc mô tả rõ đây là conditional forecast.
+7. Chỉ dùng SARIMA chu kỳ 5 khi ACF/weekday analysis có bằng chứng mùa vụ. Không mặc định `frequency = 5` là đủ chứng minh.
+8. Không kết luận GARCH “tối ưu” chỉ vì AIC âm. AIC chỉ có ý nghĩa tương đối giữa các model fit trên cùng response/sample.
+
+### Biểu đồ
+
+1. Sửa `close_price.png`: bỏ `breaks = seq(60000, 80000, ...)`, vì dữ liệu chạy từ khoảng 6,955 đến 129,856 nên nhãn trục Y hiện sai lệch.
+2. Giảm nhãn trục X của biểu đồ dài hạn xuống mỗi 1-2 năm. `garch_volatility.png` hiện có nhãn chồng kín.
+3. Histogram hiện vẽ empirical density nhưng ghi “so sánh phân phối chuẩn”. Thêm đường normal density thật và QQ-plot, hoặc sửa subtitle.
+4. Thêm ACF/PACF return, squared return, QQ-plot và boxplot return theo weekday; mỗi hình phải có 2-4 câu diễn giải dựa trên bằng chứng.
+5. Không suy diễn từ đồ thị rằng thanh khoản tăng do quỹ/tổ chức hoặc giá tăng do chip, COVID nếu không có nguồn trích dẫn.
 
 ### Báo cáo
 
-- [ ] Có đủ các section trong `report/sections/`.
-- [ ] Có `report/report.Rmd`.
-- [ ] Knit được `report/report.docx`.
-- [ ] Báo cáo có bảng phân công nhiệm vụ.
-- [ ] Báo cáo có mô tả dữ liệu.
-- [ ] Báo cáo có biểu đồ và nhận xét.
-- [ ] Báo cáo có ít nhất 3 mô hình: ARIMA, ETS, GARCH.
-- [ ] Báo cáo có RMSE, MAPE cho ARIMA và ETS.
-- [ ] Báo cáo có phần Results & Discussion.
-- [ ] Báo cáo có kết luận và hướng phát triển.
+1. Ghép các section vào `report.Rmd` bằng child documents hoặc `knitr::knit_child()`; chèn bảng CSV và hình bằng code thay vì copy thủ công.
+2. Sửa mục nguồn dữ liệu, công thức return, tên file hình và số liệu cho đồng nhất với code.
+3. Không dùng “chấp nhận H0”; dùng “chưa đủ bằng chứng bác bỏ H0”. P-value của `adf.test` bị chặn ở 0.01 phải trình bày là `<= 0.01`, không phải giá trị chính xác.
+4. Bỏ khuyến nghị mua/bán, cắt lỗ và VaR khi dự án chưa triển khai/backtest VaR. Thay bằng kết luận học thuật và giới hạn áp dụng.
+5. Thêm bảng contributions và peer assessment có nhận xét ưu điểm, hạn chế, mức hoàn thành của từng người.
+6. Tạo slide 8-12 trang: bài toán, dữ liệu, pipeline, EDA, stationarity, forecast comparison, volatility, kết luận, đóng góp.
 
----
+## 5. Phân công cho 3 thành viên
 
-## 14. Gắn với Rubric để đạt điểm cao
+Ba người làm song song trên branch riêng. Mỗi pull request phải kèm danh sách output thay đổi và bằng chứng đã chạy.
 
-| Tiêu chí rubric | Cách project đáp ứng |
-|---|---|
-| Hình thức báo cáo | Có báo cáo Word, chia mục rõ ràng, có bảng, hình, kết luận. |
-| Kỹ năng làm việc nhóm | README có phân công rõ từng người, file phụ trách và output cần tạo. |
-| Mô tả dữ liệu và xác định bài toán | Có mục Data, mô tả nguồn dữ liệu, biến, giai đoạn, thống kê mô tả. |
-| Sử dụng R cho phân tích | Toàn bộ xử lý, modeling, visualization, output thực hiện bằng R. |
-| Sử dụng đồ thị | Có biểu đồ giá đóng cửa, return, forecast ARIMA/ETS, volatility GARCH. |
-| Sử dụng mô hình dữ liệu | Có ít nhất 3 mô hình: ARIMA, ETS, GARCH. |
+### Thành viên 1: Dữ liệu, tái lập và trực quan hóa
 
-Để đạt điểm cao, mỗi biểu đồ trong báo cáo phải có **nhận xét**, không chỉ chèn hình. Mỗi mô hình phải có **giải thích ý nghĩa**, không chỉ đưa code.
+**File phụ trách:** notebook, `R/01_data_cleaning.R`, `R/02_visualization.R`, `data/README_data.md`, phần Data/Visualization.
 
----
+- [ ] Xác minh nguồn dữ liệu thật; sửa notebook để tạo đúng schema/giai đoạn hiện tại.
+- [ ] Thêm toàn bộ data-quality checks và bảng `data_quality_report.csv`.
+- [ ] Quyết định cách xử lý 173 volume-zero rows, ghi rõ trong báo cáo.
+- [ ] Hợp nhất về log return `return`.
+- [ ] Sửa trục các hình hiện tại; thêm ACF/PACF, QQ-plot, normal overlay, squared returns và weekday plot.
+- [ ] Sửa phần Data/Visualization, xóa các khẳng định không có nguồn.
 
-## 15. Lỗi thường gặp và cách xử lý
+**Nghiệm thu:** chạy từ raw CSV sinh đúng 2,960 dòng (hoặc ghi rõ số mới sau xử lý), không trùng ngày, không vi phạm OHLC, hình đọc được ở tỷ lệ 100% trong Word.
 
-### Lỗi 1: Không tìm thấy file dữ liệu
+### Thành viên 2: Dự báo giá và kiểm định thống kê
 
-Thông báo thường gặp:
+**File phụ trách:** `R/03_stationarity_arima_ets.R`, bảng forecast, hình forecast, phần Modeling.
 
-```text
-cannot open file 'data/processed/fpt_clean.csv'
-```
+- [ ] Thêm naive benchmark và rolling-origin evaluation.
+- [ ] Thêm MAE bên cạnh RMSE/MAPE; lưu cùng một bảng tidy.
+- [ ] Thêm residual diagnostics và xuất bảng/ảnh kiểm định.
+- [ ] Triển khai ETS damped; chỉ triển khai SARIMA/ARIMAX khi có lập luận hợp lệ.
+- [ ] Bảo đảm mọi model dùng cùng train/test folds để so sánh công bằng.
+- [ ] Viết lại nhận xét theo kết quả thật; không gắn nhãn “rất chính xác” chỉ từ một test window.
 
-Cách xử lý:
+**Nghiệm thu:** bảng có model, fold, RMSE, MAE, MAPE; mô hình được chọn thắng naive ổn định qua các fold và phần dư được thảo luận.
 
-- Kiểm tra đã chạy `R/01_data_cleaning.R` chưa.
-- Kiểm tra file `fpt_clean.csv` có nằm đúng trong `data/processed/` không.
-- Kiểm tra đang mở RStudio tại thư mục gốc project chưa.
+### Thành viên 3: GARCH, tích hợp báo cáo và bài nộp
 
-### Lỗi 2: Cột `date` không phải ngày
+**File phụ trách:** `R/04_garch_volatility.R` đến `R/06_export_report_tables.R`, `R/run_all.R`, `report/`, slide.
 
-Cách xử lý:
+- [ ] Thêm ARCH-LM, Student-t, eGARCH, GJR-GARCH và residual diagnostics.
+- [ ] Tạo bảng GARCH comparison thống nhất; diễn giải significance, persistence và asymmetry đúng công thức từng model.
+- [ ] Sửa model comparison để tách forecast-price và volatility thành hai bảng.
+- [ ] Hoàn thiện `report.Rmd`, chèn tự động section/bảng/hình và knit Word.
+- [ ] Viết Abstract, References, Contributions, Peer Assessment; điền tên nhóm.
+- [ ] Tạo `.pptx`, kiểm tra link/ảnh/font và điều phối kiểm thử chéo.
+
+**Nghiệm thu:** `Rscript R/run_all.R` và render báo cáo thành công trong session sạch; DOCX/PPTX mở được; không còn placeholder.
+
+## 6. Thứ tự thực hiện nhanh
+
+### Vòng 1: Cứu bài nộp
+
+1. Thành viên 1 chốt nguồn và schema dữ liệu.
+2. Thành viên 2 và 3 chỉ bắt đầu chạy model cuối sau khi nhận checksum/file sạch đã chốt.
+3. Thành viên 3 dựng ngay khung báo cáo đủ 11 mục và slide, không chờ model cải tiến.
+4. Cả nhóm hoàn thành P0, tạo được Word/PPTX tối thiểu nhưng đúng cấu trúc.
+
+### Vòng 2: Nâng điểm
+
+1. Thành viên 1 hoàn thiện quality checks và hình bổ sung.
+2. Thành viên 2 hoàn thiện benchmark, cross-validation và diagnostics.
+3. Thành viên 3 hoàn thiện GARCH variants và diagnostics.
+4. Cập nhật toàn bộ bảng/hình tự động, không nhập số thủ công vào báo cáo.
+
+### Vòng 3: Kiểm chứng chéo
+
+1. Thành viên 1 kiểm tra phần ARIMA/ETS và đối chiếu mọi số với CSV.
+2. Thành viên 2 kiểm tra GARCH, nguồn dữ liệu và logic diễn giải.
+3. Thành viên 3 chạy repository từ đầu, knit Word, mở PPTX và kiểm tra checklist rubric.
+
+## 7. Lệnh chạy chuẩn đề xuất
 
 ```r
-fpt <- fpt %>%
-  mutate(date = as.Date(date))
+# Từ thư mục gốc project
+source("R/run_all.R")
+rmarkdown::render("report/report.Rmd", output_format = "word_document")
 ```
 
-### Lỗi 3: Cột giá đang là character
+`R/run_all.R` nên gọi lần lượt `00_config.R` đến `06_export_report_tables.R`, dừng ngay khi thiếu package/input và ghi `sessionInfo()` vào `output/session_info.txt`. Không tự động `install.packages()` bên trong pipeline; liệt kê dependency trong README hoặc `renv.lock`.
 
-Cách xử lý:
+## 8. Checklist trước khi nộp
 
-```r
-fpt <- fpt %>%
-  mutate(
-    open = as.numeric(open),
-    high = as.numeric(high),
-    low = as.numeric(low),
-    close = as.numeric(close),
-    volume = as.numeric(volume)
-  )
-```
+- [ ] Word và PowerPoint mở được; không có file 0 byte.
+- [ ] Có một file R entry point và repository đầy đủ để kiểm chứng.
+- [ ] Không còn `...`, `xxx`, “đang hoàn thiện”, tên người giả hoặc output “dự kiến” trong tài liệu chính.
+- [ ] Mọi số trong README, báo cáo và slide khớp CSV mới nhất.
+- [ ] Mọi hình được gọi đúng tên file và có caption/nguồn.
+- [ ] Nguồn dữ liệu, khoảng thời gian, số quan sát và loại giá nhất quán ở mọi nơi.
+- [ ] Mỗi kết luận về model có metric/diagnostic đi kèm.
+- [ ] Contributions và peer assessment đã được cả 3 người đồng ý.
+- [ ] Một người không viết module đó đã chạy thử và ký xác nhận checklist.
+- [ ] Tạo bản nộp cuối từ commit/tag cố định; không chỉnh trực tiếp sau khi kiểm thử.
 
-### Lỗi 4: Không cài được package `rugarch`
+## 9. Những việc không nên ưu tiên
 
-Thử cài lại:
+- Không thêm LSTM, Prophet, Transformer hoặc sentiment analysis trước khi P0/P1 hoàn tất.
+- Không tạo thêm nhiều model chỉ để đủ số lượng; ba model được chẩn đoán đúng có giá trị hơn tám model chỉ có AIC.
+- Không dành thời gian chỉnh màu/font trước khi pipeline, báo cáo và nguồn dữ liệu nhất quán.
+- Không copy bảng thủ công từ Excel vào Word nếu R Markdown có thể sinh trực tiếp.
 
-```r
-install.packages("rugarch", dependencies = TRUE)
-```
-
-Nếu vẫn lỗi, báo cho nhóm để Người 3 xử lý riêng phần GARCH.
-
-### Lỗi 5: Knit báo cáo không thấy hình
-
-Cần kiểm tra đường dẫn hình trong file `.md`. Khi file `.md` nằm trong `report/sections/`, đường dẫn hình có thể cần dùng:
-
-```markdown
-![](../../output/figures/garch_volatility.png)
-```
-
-Nếu chèn hình trong `report.Rmd` từ thư mục `report/`, đường dẫn thường là:
-
-```markdown
-![](../output/figures/garch_volatility.png)
-```
-
----
-
-## 16. Quy ước bàn giao giữa các thành viên
-
-Khi một người làm xong phần của mình, cần gửi tin nhắn trong nhóm theo mẫu:
-
-```text
-Mình đã xong phần Người 1.
-Đã tạo các file:
-- data/processed/fpt_clean.csv
-- output/tables/data_summary.csv
-- output/figures/close_price.png
-- output/figures/returns.png
-- report/sections/02_data.md
-- report/sections/03_visualization.md
-
-Mọi người pull code mới nhất trước khi làm tiếp.
-```
-
-Người 2 và Người 3 cũng báo tương tự để tránh thiếu file.
-
----
-
-## 17. Tóm tắt cực ngắn cho từng người
-
-### Người 1
-
-Làm dữ liệu và hình ban đầu. Quan trọng nhất là phải tạo được:
-
-```text
-data/processed/fpt_clean.csv
-```
-
-Nếu thiếu file này, Người 2 và Người 3 không làm tiếp được.
-
-### Người 2
-
-Làm ARIMA và ETS. Quan trọng nhất là phải tạo được:
-
-```text
-output/tables/forecast_metrics.csv
-```
-
-Nếu thiếu file này, Người 3 không so sánh mô hình được.
-
-### Người 3
-
-Làm GARCH, Results & Discussion, kết luận và ghép báo cáo. Quan trọng nhất là phải tạo được:
-
-```text
-output/tables/model_comparison.csv
-report/report.docx
-```
-
----
-
-## 18. Liên hệ và cập nhật
-
-Nếu thay đổi cấu trúc thư mục, tên file output hoặc cách chia nhiệm vụ, phải cập nhật lại README này ngay để cả nhóm làm thống nhất.
