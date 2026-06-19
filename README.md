@@ -594,12 +594,12 @@ Sau khi hoàn thành, dự án sẽ tạo ra các nhóm kết quả sau.
 
 ### 12.1. Thống kê dữ liệu
 
-- Giai đoạn phân tích: `...`
-- Số dòng dữ liệu: `...`
-- Giá đóng cửa thấp nhất: `...`
-- Giá đóng cửa cao nhất: `...`
-- Giá đóng cửa trung bình: `...`
-- Độ lệch chuẩn giá đóng cửa: `...`
+- Giai đoạn phân tích: `01/01/2015 - 08/06/2026`
+- Số dòng dữ liệu: `2960`
+- Giá đóng cửa thấp nhất: `6.955,45 VNĐ`
+- Giá đóng cửa cao nhất: `129.855,73 VNĐ`
+- Giá đóng cửa trung bình: `40.914,68 VNĐ`
+- Độ lệch chuẩn giá đóng cửa: `34.715,05 VNĐ`
 
 ### 12.2. Kết quả kiểm định tính dừng
 
