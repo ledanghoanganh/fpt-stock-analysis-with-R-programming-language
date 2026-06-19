@@ -10,3 +10,6 @@
 .DS_Store
 Thumbs.db
 .positai
+
+# Personal learning notes and local-only helper scripts
+local_docs/
