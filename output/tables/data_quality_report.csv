@@ -1,0 +1,13 @@
+check,count
+raw_rows,2960
+invalid_date,0
+duplicate_date,0
+missing_ohlcv,0
+non_positive_price,0
+negative_volume,0
+zero_volume,173
+raw_high_below_open_or_close,8
+raw_low_above_open_or_close,11
+high_below_open_or_close_after_volume_filter,8
+low_above_open_or_close_after_volume_filter,10
+ohlc_rows_repaired_after_volume_filter,18
