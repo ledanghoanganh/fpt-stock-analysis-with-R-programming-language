@@ -1,162 +1,148 @@
-# ==============================================================================
-# PROJECT: Stock Market Analysis (FPT)
-# SCRIPT: 02_visualization.R
-# PURPOSE: Xuất bảng thống kê mô tả & Trực quan hóa chuỗi dữ liệu chuẩn học thuật
-# ==============================================================================
+# 02_visualization.R
+source("R/00_config.R")
+library(scales)
+library(forecast)
 
-# 1. KHAI BÁO THƯ VIỆN & CẤU HÌNH PHÔNG ĐỒ THỊ ----------------------------------
-library(tidyverse)
-library(scales) 
-library(extrafont) # Thư viện giúp đồng bộ phông chữ Arial sắc nét
-
-# Tự động kiểm tra và cấu hình phông chữ hệ thống
-if(!any(fonts() == "Arial")) { font_import(prompt = FALSE); loadfonts() }
-
-# 2. ĐỌC DỮ LIỆU ĐÃ LÀM SẠCH ---------------------------------------------------
-data_path <- "data/processed/fpt_clean.csv"
-
-if (!file.exists(data_path)) {
-  stop("Không tìm thấy file fpt_clean.csv! Vui lòng chạy file R/01_data_cleaning.R trước.")
+if (!file.exists(CLEAN_DATA_PATH)) {
+  stop("Chạy R/01_data_cleaning.R trước.")
 }
 
-df <- read.csv(data_path)
+df <- readr::read_csv(CLEAN_DATA_PATH, show_col_types = FALSE) %>%
+  mutate(
+    date = as.Date(date),
+    weekday = factor(
+      lubridate::wday(date, week_start = 1),
+      levels = 1:5,
+      labels = c("Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu")
+    )
+  )
 
-# Ép lại định dạng ngày tháng để vẽ biểu đồ không bị lỗi trục X
-df$time <- as.Date(df$time)
-
-# Tính toán tỷ suất sinh lời hằng ngày (daily returns) dựa trên cột close
-df <- df %>%
-  arrange(time) %>%
-  mutate(returns = (close - lag(close)) / lag(close)) 
-
-# 3. KIỂM TRA VÀ XUẤT BÁO CÁO GIÁ TRỊ THIẾU (MISSING VALUES) --------------------
-missing_report <- data.frame(
-  Variable = colnames(df),
-  Missing_Count = colSums(is.na(df)),
-  Missing_Percentage = (colSums(is.na(df)) / nrow(df)) * 100
+missing_report <- tibble::tibble(
+  variable = names(df),
+  missing_count = colSums(is.na(df)),
+  missing_percentage = 100 * missing_count / nrow(df)
 )
+readr::write_csv(missing_report, file.path(TABLE_DIR, "missing_values.csv"))
 
-if (!dir.exists("output/tables")) dir.create("output/tables", recursive = TRUE)
-write.csv(missing_report, "output/tables/missing_values.csv", row.names = FALSE)
-print("--- Đã xuất báo cáo Missing Values vào output/tables/ ---")
+summary_table <- tibble::tibble(
+  variable = c("close", "volume", "return"),
+  count = c(sum(!is.na(df$close)), sum(!is.na(df$volume)), sum(!is.na(df$return))),
+  mean = c(mean(df$close), mean(df$volume), mean(df$return, na.rm = TRUE)),
+  median = c(median(df$close), median(df$volume), median(df$return, na.rm = TRUE)),
+  sd = c(sd(df$close), sd(df$volume), sd(df$return, na.rm = TRUE)),
+  min = c(min(df$close), min(df$volume), min(df$return, na.rm = TRUE)),
+  max = c(max(df$close), max(df$volume), max(df$return, na.rm = TRUE))
+)
+readr::write_csv(summary_table, file.path(TABLE_DIR, "data_summary.csv"))
 
-# 4. TÍNH TOÁN VÀ XUẤT BẢNG THỐNG KÊ MÔ TẢ --------------------------------------
-summary_table <- df %>%
-  summarise(
-    across(c(close, volume, returns), list(
-      Count  = ~sum(!is.na(.)),
-      Mean   = ~mean(., na.rm = TRUE),
-      Median = ~median(., na.rm = TRUE),
-      Min    = ~min(., na.rm = TRUE),
-      Max    = ~max(., na.rm = TRUE),
-      SD     = ~sd(., na.rm = TRUE)
-    ), .names = "{.col}_{.fn}")
-  ) %>%
-  pivot_longer(
-    cols = everything(),
-    names_to = c("Variable", "Statistic"),
-    names_pattern = "(.*)_(.*)"
-  ) %>%
-  pivot_wider(
-    names_from = "Statistic",
-    values_from = "value"
+theme_project <- ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(
+    plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = ggplot2::element_text(hjust = 0.5, color = "grey35"),
+    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
+    panel.grid.minor = ggplot2::element_blank(),
+    legend.position = "bottom"
   )
 
-write.csv(summary_table, "output/tables/data_summary.csv", row.names = FALSE)
-print("--- Đã xuất bảng Thống kê mô tả vào output/tables/ ---")
-
-# 5. THIẾT LẬP PHÔNG NỀN ĐỒ THỊ CHUẨN NGHÊN CỨU (THEME) ------------------------
-if (!dir.exists("output/figures")) dir.create("output/figures", recursive = TRUE)
-
-theme_academic <- theme_minimal() + 
-  theme(
-    plot.title = element_text(family = "Arial", face = "bold", size = 15, color = "#111111", hjust = 0.5),
-    plot.subtitle = element_text(family = "Arial", size = 10.5, color = "#444444", hjust = 0.5),
-    axis.title = element_text(family = "Arial", face = "bold", size = 11, color = "#111111"),
-    axis.title.y = element_text(vjust = 2.5),
-    axis.title.x = element_text(vjust = -1),
-    axis.text = element_text(family = "Arial", size = 9.5, color = "#333333"),
-    axis.text.x = element_text(angle = 45, vjust = 0.5, hjust=1),
-    panel.grid.major = element_line(color = "#E5E5E5", linewidth = 0.5),
-    panel.grid.major.x = element_blank(), # Tối giản đường lưới dọc để làm nổi bật dòng thời gian
-    panel.grid.minor = element_line(color = "#F5F5F5", linewidth = 0.35),
-    plot.margin = margin(15, 15, 15, 15)
+save_plot <- function(filename, plot, width = 10, height = 6) {
+  ggplot2::ggsave(
+    file.path(FIGURE_DIR, filename), plot,
+    width = width, height = height, dpi = 300, bg = "white"
   )
+}
 
-# 6. TRỰC QUAN HÓA DỮ LIỆU VÀ XUẤT ĐỒ THỊ CHẤT LƯỢNG CAO -----------------------
+p_close <- ggplot2::ggplot(df, ggplot2::aes(date, close)) +
+  ggplot2::geom_line(color = "#1565C0", linewidth = 0.6) +
+  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  ggplot2::scale_y_continuous(labels = scales::label_number(big.mark = ",")) +
+  ggplot2::labs(
+    title = "Giá đóng cửa điều chỉnh của cổ phiếu FPT",
+    subtitle = paste(min(df$date), "đến", max(df$date)),
+    x = "Năm", y = "Giá đóng cửa điều chỉnh (VND)"
+  ) + theme_project
+save_plot("close_price.png", p_close)
 
-# --- Biểu đồ 1: Biểu đồ Giá đóng cửa (Đường lên xuống sắc nét) ---
-p_close <- ggplot(df, aes(x = time, y = close)) +
-  geom_line(color = "#0056B3", linewidth = 0.75) +
-  labs(
-    title = "Xu Hướng Giá Đóng Cửa Cổ Phiếu FPT",
-    subtitle = paste("Giai đoạn lịch sử:", min(df$time), "đến", max(df$time)),
-    x = "Thời gian",
-    y = "Giá đóng cửa (VNĐ)"
+p_volume <- ggplot2::ggplot(df, ggplot2::aes(date, volume)) +
+  ggplot2::geom_col(fill = "#2E7D32", width = 1) +
+  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  ggplot2::scale_y_continuous(labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
+  ggplot2::labs(
+    title = "Khối lượng giao dịch cổ phiếu FPT",
+    x = "Năm", y = "Khối lượng"
+  ) + theme_project
+save_plot("volume.png", p_volume)
+
+return_df <- df %>% filter(!is.na(return))
+
+p_returns <- ggplot2::ggplot(return_df, ggplot2::aes(date, return)) +
+  ggplot2::geom_line(color = "#B71C1C", linewidth = 0.35) +
+  ggplot2::geom_hline(yintercept = 0, color = "grey40") +
+  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  ggplot2::scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  ggplot2::labs(
+    title = "Lợi suất log hằng ngày của cổ phiếu FPT",
+    subtitle = "Các cụm biên độ lớn gợi ý phương sai thay đổi theo thời gian",
+    x = "Năm", y = "Log return"
+  ) + theme_project
+save_plot("returns.png", p_returns)
+
+return_mean <- mean(return_df$return)
+return_sd <- sd(return_df$return)
+p_distribution <- ggplot2::ggplot(return_df, ggplot2::aes(return)) +
+  ggplot2::geom_histogram(
+    ggplot2::aes(y = after_stat(density)),
+    bins = 60, fill = "#64B5F6", color = "white"
   ) +
-  scale_x_date(date_labels = "%m/%Y", date_breaks = "3 months") +
-  scale_y_continuous(labels = comma, breaks = seq(60000, 80000, by = 2500)) +
-  theme_academic
-
-ggsave("output/figures/close_price.png", plot = p_close, width = 11, height = 6.5, dpi = 300)
-
-
-# --- Biểu đồ 2: Biểu đồ Khối lượng giao dịch (Dạng cột trực quan) ---
-p_volume <- ggplot(df, aes(x = time, y = volume)) +
-  geom_bar(stat = "identity", fill = "#2E7D32", alpha = 0.7) +
-  labs(
-    title = "Khối Lượng Giao Dịch Cổ Phiếu FPT Qua Thời Gian",
-    subtitle = paste("Giai đoạn lịch sử:", min(df$time), "đến", max(df$time)),
-    x = "Thời gian",
-    y = "Khối lượng giao dịch (Cổ phiếu)"
+  ggplot2::geom_density(color = "#D32F2F", linewidth = 0.8) +
+  ggplot2::stat_function(
+    fun = dnorm,
+    args = list(mean = return_mean, sd = return_sd),
+    color = "#212121", linetype = "dashed", linewidth = 0.8
   ) +
-  scale_x_date(date_labels = "%m/%Y", date_breaks = "3 months") +
-  scale_y_continuous(labels = comma) +
-  theme_academic
+  ggplot2::scale_x_continuous(labels = scales::label_percent(accuracy = 1)) +
+  ggplot2::labs(
+    title = "Phân phối lợi suất log hằng ngày",
+    subtitle = "Đỏ: mật độ thực nghiệm; đen đứt nét: phân phối chuẩn cùng mean và SD",
+    x = "Log return", y = "Mật độ"
+  ) + theme_project
+save_plot("return_distribution.png", p_distribution)
 
-ggsave("output/figures/volume.png", plot = p_volume, width = 11, height = 6.5, dpi = 300)
+p_qq <- ggplot2::ggplot(return_df, ggplot2::aes(sample = return)) +
+  ggplot2::stat_qq(color = "#1565C0", alpha = 0.5) +
+  ggplot2::stat_qq_line(color = "#D32F2F") +
+  ggplot2::labs(
+    title = "QQ-plot của lợi suất log",
+    subtitle = "Độ lệch ở hai đuôi cho thấy cần cân nhắc phân phối đuôi dày",
+    x = "Phân vị chuẩn lý thuyết", y = "Phân vị mẫu"
+  ) + theme_project
+save_plot("qqplot_return.png", p_qq)
 
+p_squared <- ggplot2::ggplot(return_df, ggplot2::aes(date, return^2)) +
+  ggplot2::geom_line(color = "#6A1B9A", linewidth = 0.35) +
+  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  ggplot2::labs(
+    title = "Bình phương lợi suất log",
+    subtitle = "Dùng để quan sát volatility clustering",
+    x = "Năm", y = expression(return^2)
+  ) + theme_project
+save_plot("squared_returns.png", p_squared)
 
-# --- Biểu đồ 3: Biểu đồ Tỷ suất sinh lời (Đường răng cưa học thuật) ---
-p_returns <- ggplot(df %>% filter(!is.na(returns)), aes(x = time, y = returns)) +
-  geom_line(color = "#C0392B", linewidth = 0.45) +
-  labs(
-    title = "Biến Động Tỷ Suất Sinh Lời Hằng Ngày Của Cổ Phiếu FPT",
-    subtitle = "Daily Returns (Kiểm tra hiện tượng biến động cụm - Volatility Clustering | 2024 - 2026)",
-    x = "Thời gian",
-    y = "Tỷ suất sinh lời (%)"
-  ) +
-  scale_x_date(date_labels = "%m/%Y", date_breaks = "3 months") +
-  scale_y_continuous(
-    labels = percent_format(accuracy = 0.5),
-    breaks = seq(-0.02, 0.015, by = 0.005),
-    minor_breaks = seq(-0.02, 0.015, by = 0.0025)
-  ) +
-  theme_academic
+p_weekday <- ggplot2::ggplot(return_df, ggplot2::aes(weekday, return)) +
+  ggplot2::geom_boxplot(fill = "#80CBC4", outlier.alpha = 0.25) +
+  ggplot2::scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  ggplot2::labs(
+    title = "Phân phối lợi suất theo ngày trong tuần",
+    subtitle = "Chỉ dùng làm bằng chứng thăm dò cho mùa vụ tuần",
+    x = NULL, y = "Log return"
+  ) + theme_project
+save_plot("return_by_weekday.png", p_weekday)
 
-ggsave("output/figures/returns.png", plot = p_returns, width = 11, height = 6.5, dpi = 300)
+png(file.path(FIGURE_DIR, "acf_return.png"), width = 1800, height = 1100, res = 180)
+forecast::Acf(return_df$return, lag.max = 40, main = "ACF của lợi suất log")
+dev.off()
 
-# --- Biểu đồ 4: Phân phối tỷ suất sinh lời (Histogram & Density) ---
-p_return_dist <- ggplot(df %>% filter(!is.na(returns)), aes(x = returns)) +
-  geom_histogram(aes(y = ..density..), bins = 50, fill = "#3498DB", color = "white", alpha = 0.7) +
-  geom_density(color = "#E74C3C", size = 1) +
-  labs(
-    title = "Phân Phối Tỷ Suất Sinh Lời Hằng Ngày Cổ Phiếu FPT",
-    subtitle = "So sánh với phân phối chuẩn (Đường cong mật độ)",
-    x = "Tỷ suất sinh lời",
-    y = "Mật độ (Density)"
-  ) +
-  scale_x_continuous(labels = percent_format(accuracy = 0.1)) +
-  theme_academic
+png(file.path(FIGURE_DIR, "pacf_return.png"), width = 1800, height = 1100, res = 180)
+forecast::Pacf(return_df$return, lag.max = 40, main = "PACF của lợi suất log")
+dev.off()
 
-
-ggsave("output/figures/return_distribution.png", plot = p_return_dist, width = 11, height = 6.5, dpi = 300)
-
-print("--- Đã vẽ và xuất toàn bộ 4 biểu đồ nâng cao (300 DPI) vào mục output/figures/ ---")
-
-# 7. ÉP RSTUDIO HIỂN THỊ BIỂU ĐỒ LÊN MÀNH HÌNH PLOTS ---------------------------
-print(p_close)       # Hiện biểu đồ xu hướng giá lên xuống
-print(p_volume)      # Hiện biểu đồ khối lượng giao dịch dạng cột
-print(p_returns)     # Hiện biểu đồ tỷ suất sinh lời nâng cao
-print(p_return_dist) # Hiện biểu đồ phân phối tỷ suất sinh lời
-
+message("Đã xuất bảng và 9 biểu đồ vào output/.")
