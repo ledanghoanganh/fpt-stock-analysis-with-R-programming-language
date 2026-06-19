@@ -1,0 +1,4 @@
+"model","lb_statistic","lb_p_value","test_lag","fitdf","white_noise"
+"ARIMA",6.68033351564852,0.245520227771803,10,5,"Yes (Fail to reject H0)"
+"ETS",13.1368736471055,0.0409131473752331,10,4,"No (Reject H0)"
+"ETS Damped",13.0297184605425,0.023101859924705,10,5,"No (Reject H0)"
