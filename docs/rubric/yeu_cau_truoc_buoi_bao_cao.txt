@@ -1,0 +1,6 @@
+Bắt đầu báo cáo project vào ngày 22/6-28/6, 
+Demo ngữ cảnh và quá trình phân tích dữ liệu. 
+Phải có giới thiệu mô hình sử dụng, thuật toán gì và đánh giá hiệu suất mô hình,..
+Nhớ nộp file Word, ppt, project. 
+Trong phần demo thì người này làm phần nào thì báo cáo phần đó. 
+Phải in bảng phân công công việc, thời gian và đánh giá mức độ hoàn thành.
