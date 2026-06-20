@@ -111,18 +111,19 @@ Tất cả specification dùng cùng chuỗi return và mean equation ARMA(0,0).
 
 | Chuỗi | ADF statistic | p-value | Kết luận ở mức 5% |
 |---|---:|---:|---|
-| `close` | -1.7312 | 0.6921 | Chưa đủ bằng chứng bác bỏ unit root |
-| `log_close` | -1.2655 | 0.8893 | Chưa đủ bằng chứng bác bỏ unit root |
-| `return` | -13.8526 | <= 0.01 | Bác bỏ unit root; return dừng |
+| `close` | -1.7892 | 0.6676 | Chưa đủ bằng chứng bác bỏ unit root |
+| `log_close` | -1.3194 | 0.8665 | Chưa đủ bằng chứng bác bỏ unit root |
+| `return` | -13.7914 | <= 0.01 | Bác bỏ unit root; return dừng |
 
 ### Forecast-price
 
-- **Holdout leader:** ARIMAX (Lagged), RMSE `1,863.36`, MAE `1,501.17`, MAPE `2.05%`.
-- **Rolling-CV leader trong nhóm đã chạy CV:** ETS Damped, mean RMSE `4,726.67`.
-- ETS Damped không thắng Naive trên holdout và residual Ljung-Box chưa đạt mức 5%.
-- ARIMAX chưa có rolling CV trong output hiện tại.
+- **Holdout leader:** ETS Damped, RMSE `1,939.13`, MAE `1,524.15`, MAPE `2.10%`.
+- ETS Damped chỉ hơn Naive khoảng `0.72` RMSE trên holdout.
+- **Rolling-CV leader:** Naive, mean RMSE `5,353.94`; ETS Damped đạt `5,404.76`.
+- Tất cả fitted forecast models đều bị Ljung-Box bác bỏ white-noise residual ở mức 5%.
+- ARIMAX và SARIMA chưa có rolling CV trong output hiện tại.
 
-Kết luận: holdout, rolling CV và residual diagnostics chưa xác định một model thắng nhất quán.
+Kết luận: chưa có bằng chứng model phức tạp cải thiện Naive một cách ổn định.
 
 Xem [`output/tables/price_forecast_comparison.csv`](output/tables/price_forecast_comparison.csv).
 
@@ -275,12 +276,10 @@ Chi tiết đóng góp và peer assessment được trình bày trong báo cáo.
 
 ## Tài liệu dự án
 
+- [Tài liệu tổng hợp toàn bộ dự án](docs/MASTER_DOCUMENTATION.md)
 - [Rubric và yêu cầu](docs/rubric/)
-- [Hướng dẫn hoàn thành dự án](docs/guide.md)
-- [Hướng dẫn Người 1](docs/guide_nguoi_1.md)
 - [Lý thuyết nền tảng](docs/ly_thuyet_project.md)
 - [Phân công mô hình cải tiến](docs/phan_cong_mo_hinh_cai_tien.md)
-- [README/phân công cũ](docs/README_old_task.md)
 
 ## Giới hạn sử dụng
 

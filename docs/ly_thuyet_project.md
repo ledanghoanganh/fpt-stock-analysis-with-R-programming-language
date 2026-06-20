@@ -44,9 +44,9 @@ Chuỗi thời gian {Yₜ} là **dừng** nếu:
 **Kết quả trong project:**
 | Chuỗi | ADF Statistic | p-value | Kết luận |
 |---|---|---|---|
-| close | -1.73 | 0.69 | Không dừng |
-| log_close | -1.27 | 0.89 | Không dừng |
-| return | -13.85 | <0.01 | **Dừng** |
+| close | -1.79 | 0.67 | Không dừng |
+| log_close | -1.32 | 0.87 | Không dừng |
+| return | -13.79 | <=0.01 | **Dừng** |
 
 → Cần lấy sai phân bậc 1 (d=1) trước khi mô hình hóa ARIMA.
 

@@ -5,16 +5,7 @@
 # ==============================================================================
 
 source("R/00_config.R")
-
-required_packages <- c(
-  "rugarch", "FinTS", "dplyr", "tidyr", "purrr", "readr", "ggplot2", "scales"
-)
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
-]
-if (length(missing_packages) > 0) {
-  stop("Thiếu package: ", paste(missing_packages, collapse = ", "))
-}
+require_packages(c("rugarch", "FinTS", "scales"))
 
 # 1. READ AND VALIDATE DATA -----------------------------------------------------
 if (!file.exists(CLEAN_DATA_PATH)) {
@@ -22,11 +13,7 @@ if (!file.exists(CLEAN_DATA_PATH)) {
 }
 
 df <- readr::read_csv(CLEAN_DATA_PATH, show_col_types = FALSE)
-required_columns <- c("date", "return")
-missing_columns <- setdiff(required_columns, names(df))
-if (length(missing_columns) > 0) {
-  stop("Dữ liệu thiếu cột: ", paste(missing_columns, collapse = ", "))
-}
+assert_columns(df, c("date", "return"), "Dữ liệu GARCH")
 
 df$date <- as.Date(df$date)
 valid_rows <- is.finite(df$return) & !is.na(df$date)
@@ -43,6 +30,8 @@ message("GARCH input: ", length(returns), " returns from ",
         min(df_valid$date), " to ", max(df_valid$date))
 
 # 2. MODEL SPECIFICATIONS ------------------------------------------------------
+# Registry bảo đảm cả bốn model dùng cùng sample/mean equation và chỉ khác
+# variance specification hoặc innovation distribution.
 model_specs <- tibble::tribble(
   ~model_name,           ~variance_model, ~distribution,
   "sGARCH-Normal",      "sGARCH",        "norm",
@@ -51,6 +40,7 @@ model_specs <- tibble::tribble(
   "gjrGARCH-Student-t", "gjrGARCH",      "std"
 )
 
+# Tạo specification rồi fit bằng hybrid solver; input return giữ decimal scale.
 fit_garch_model <- function(returns, variance_model, distribution) {
   specification <- rugarch::ugarchspec(
     variance.model = list(
@@ -71,6 +61,7 @@ fit_garch_model <- function(returns, variance_model, distribution) {
   )
 }
 
+# tryCatch biến lỗi optimizer thành dữ liệu để model khác vẫn được đánh giá.
 safe_fit_garch <- function(returns, variance_model, distribution) {
   tryCatch(
     list(
@@ -83,6 +74,7 @@ safe_fit_garch <- function(returns, variance_model, distribution) {
   )
 }
 
+# Chuẩn hóa fit thành một hàng AIC/BIC/persistence, kể cả khi fit thất bại.
 extract_comparison_row <- function(result, model_name, variance_model, distribution) {
   if (is.null(result$fit)) {
     return(tibble::tibble(
@@ -115,6 +107,7 @@ extract_comparison_row <- function(result, model_name, variance_model, distribut
   )
 }
 
+# Giữ cả conventional và robust standard errors để diễn giải thận trọng.
 extract_parameter_rows <- function(fit, model_name) {
   conventional <- fit@fit$matcoef
   robust <- fit@fit$robust.matcoef
@@ -130,6 +123,7 @@ extract_parameter_rows <- function(fit, model_name) {
   )
 }
 
+# z_t = epsilon_t / sigma_t là chuỗi cần gần white noise sau GARCH.
 standardized_residuals <- function(fit) {
   residual_values <- as.numeric(fit@fit$residuals)
   sigma_values <- as.numeric(fit@fit$sigma)
@@ -137,6 +131,7 @@ standardized_residuals <- function(fit) {
   values[is.finite(values)]
 }
 
+# Mọi kiểm định được đưa về cùng schema dài để dễ lọc và xuất CSV.
 diagnostic_row <- function(
     model, category, test, lag = NA_integer_, statistic = NA_real_,
     p_value = NA_real_, critical_5pct = NA_real_, result = NA_character_) {
@@ -152,11 +147,13 @@ diagnostic_row <- function(
   )
 }
 
+# p >= 0.05 nghĩa là chưa bác bỏ H0 của diagnostic tương ứng.
 p_value_result <- function(p_value, pass_text, flag_text) {
   if (!is.finite(p_value)) return("not_available")
   if (p_value >= 0.05) pass_text else flag_text
 }
 
+# Chạy tuần tự residual, ARCH, asymmetry, stability và distribution diagnostics.
 diagnose_garch_model <- function(fit, model_name) {
   z <- standardized_residuals(fit)
 
@@ -267,6 +264,7 @@ diagnose_garch_model <- function(fit, model_name) {
   dplyr::bind_rows(rows)
 }
 
+# Chuyển output acf() thành bảng để vẽ facet cho mọi model cùng lúc.
 acf_rows <- function(values, model_name, series_name, lag_max = 40) {
   acf_result <- stats::acf(values, lag.max = lag_max, plot = FALSE, na.action = na.pass)
   tibble::tibble(
@@ -280,37 +278,26 @@ acf_rows <- function(values, model_name, series_name, lag_max = 40) {
 }
 
 # 3. FIT ALL MODELS ON THE SAME RETURN VECTOR ---------------------------------
-fit_results <- vector("list", nrow(model_specs))
-names(fit_results) <- model_specs$model_name
+# pmap fit từng hàng registry và giữ model_name làm tên list.
+fit_results <- purrr::pmap(
+  model_specs,
+  function(model_name, variance_model, distribution) {
+    message("Fitting ", model_name, "...")
+    safe_fit_garch(returns, variance_model, distribution)
+  }
+) %>% rlang::set_names(model_specs$model_name)
 
-for (index in seq_len(nrow(model_specs))) {
-  specification <- model_specs[index, ]
-  message("Fitting ", specification$model_name, "...")
-  fit_results[[specification$model_name]] <- safe_fit_garch(
-    returns = returns,
-    variance_model = specification$variance_model,
-    distribution = specification$distribution
-  )
-}
-
-comparison_rows <- vector("list", nrow(model_specs))
-for (index in seq_len(nrow(model_specs))) {
-  specification <- model_specs[index, ]
-  comparison_rows[[index]] <- extract_comparison_row(
-    result = fit_results[[specification$model_name]],
-    model_name = specification$model_name,
-    variance_model = specification$variance_model,
-    distribution = specification$distribution
-  )
-}
-
-garch_comparison <- dplyr::bind_rows(comparison_rows) %>%
+# Ghép registry với result theo vị trí để tạo bảng comparison không cần loop.
+comparison_rows <- purrr::pmap(
+  c(model_specs, list(result = unname(fit_results))),
+  function(model_name, variance_model, distribution, result) {
+    extract_comparison_row(result, model_name, variance_model, distribution)
+  }
+)
+garch_comparison <- bind_rows(comparison_rows) %>%
   dplyr::arrange(is.na(aic), aic)
 
-successful_fits <- purrr::keep(
-  purrr::map(fit_results, "fit"),
-  ~ !is.null(.x)
-)
+successful_fits <- purrr::map(fit_results, "fit") %>% purrr::compact()
 
 if (length(successful_fits) == 0) {
   readr::write_csv(garch_comparison, file.path(TABLE_DIR, "garch_comparison.csv"))
@@ -390,13 +377,10 @@ qq_data <- purrr::imap_dfr(successful_fits, function(fit, model_name) {
   )
 })
 
-readr::write_csv(garch_comparison, file.path(TABLE_DIR, "garch_comparison.csv"))
-readr::write_csv(garch_parameters, file.path(TABLE_DIR, "garch_parameters.csv"))
-readr::write_csv(garch_diagnostics, file.path(TABLE_DIR, "garch_diagnostics.csv"))
-readr::write_csv(
-  diagnostic_summary_rows,
-  file.path(TABLE_DIR, "garch_diagnostic_summary.csv")
-)
+write_project_csv(garch_comparison, "garch_comparison.csv")
+write_project_csv(garch_parameters, "garch_parameters.csv")
+write_project_csv(garch_diagnostics, "garch_diagnostics.csv")
+write_project_csv(diagnostic_summary_rows, "garch_diagnostic_summary.csv")
 saveRDS(successful_fits, file.path(MODEL_DIR, "garch_fits.rds"))
 
 print(garch_comparison)
@@ -434,7 +418,7 @@ base_info <- tibble::tibble(
 )
 
 garch_summary <- dplyr::bind_rows(base_parameters, base_info)
-readr::write_csv(garch_summary, file.path(TABLE_DIR, "garch_summary.csv"))
+write_project_csv(garch_summary, "garch_summary.csv")
 
 base_volatility <- as.numeric(base_fit@fit$sigma)
 vol_df <- tibble::tibble(
@@ -442,7 +426,7 @@ vol_df <- tibble::tibble(
   return = returns,
   volatility = base_volatility
 )
-readr::write_csv(vol_df, file.path(TABLE_DIR, "garch_volatility.csv"))
+write_project_csv(vol_df, "garch_volatility.csv")
 
 # 6. VISUALIZATIONS ------------------------------------------------------------
 theme_garch <- ggplot2::theme_minimal(base_size = 11) +
@@ -452,6 +436,12 @@ theme_garch <- ggplot2::theme_minimal(base_size = 11) +
     legend.position = "bottom",
     panel.grid.minor = ggplot2::element_blank()
   )
+
+# Một wrapper ggsave giữ kích thước/DPI/background nhất quán cho mọi hình GARCH.
+save_garch_plot <- function(filename, plot, width, height) {
+  ggplot2::ggsave(file.path(FIGURE_DIR, filename), plot, width = width,
+                  height = height, dpi = 300, bg = "white")
+}
 
 p_base <- ggplot2::ggplot(vol_df, ggplot2::aes(date)) +
   ggplot2::geom_line(ggplot2::aes(y = return), color = "grey70", linewidth = 0.3) +
@@ -467,10 +457,7 @@ p_base <- ggplot2::ggplot(vol_df, ggplot2::aes(date)) +
   ) +
   theme_garch
 
-ggplot2::ggsave(
-  file.path(FIGURE_DIR, "garch_volatility.png"),
-  p_base, width = 11, height = 6.5, dpi = 300, bg = "white"
-)
+save_garch_plot("garch_volatility.png", p_base, 11, 6.5)
 
 volatility_long <- purrr::imap_dfr(successful_fits, function(fit, model_name) {
   tibble::tibble(
@@ -496,10 +483,7 @@ p_comparison <- ggplot2::ggplot(
   ) +
   theme_garch
 
-ggplot2::ggsave(
-  file.path(FIGURE_DIR, "garch_model_comparison.png"),
-  p_comparison, width = 11, height = 6.5, dpi = 300, bg = "white"
-)
+save_garch_plot("garch_model_comparison.png", p_comparison, 11, 6.5)
 
 p_acf <- ggplot2::ggplot(acf_data, ggplot2::aes(lag, acf)) +
   ggplot2::geom_ribbon(
@@ -521,10 +505,7 @@ p_acf <- ggplot2::ggplot(acf_data, ggplot2::aes(lag, acf)) +
     strip.text = ggplot2::element_text(size = 8)
   )
 
-ggplot2::ggsave(
-  file.path(FIGURE_DIR, "garch_acf_diagnostics.png"),
-  p_acf, width = 14, height = 7.5, dpi = 300, bg = "white"
-)
+save_garch_plot("garch_acf_diagnostics.png", p_acf, 14, 7.5)
 
 p_qq <- ggplot2::ggplot(
   qq_data,
@@ -541,10 +522,7 @@ p_qq <- ggplot2::ggplot(
   ) +
   theme_garch
 
-ggplot2::ggsave(
-  file.path(FIGURE_DIR, "garch_qq_diagnostics.png"),
-  p_qq, width = 11, height = 8, dpi = 300, bg = "white"
-)
+save_garch_plot("garch_qq_diagnostics.png", p_qq, 11, 8)
 
 asymmetric_names <- intersect(
   c("eGARCH-Student-t", "gjrGARCH-Student-t"),
@@ -580,10 +558,7 @@ if (nrow(news_impact_data) > 0) {
     ) +
     theme_garch
 
-  ggplot2::ggsave(
-    file.path(FIGURE_DIR, "garch_news_impact.png"),
-    p_news, width = 11, height = 5.5, dpi = 300, bg = "white"
-  )
+  save_garch_plot("garch_news_impact.png", p_news, 11, 5.5)
 }
 
 message("Completed GARCH framework: ", length(successful_fits), "/",

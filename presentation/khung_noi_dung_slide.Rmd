@@ -101,8 +101,8 @@ Student-t và mô hình phương sai có điều kiện.
 **Nội dung trên slide:**
 
 - ADF H0: chuỗi có unit root, không dừng.
-- `close`: p-value 0,6921; chưa bác bỏ H0.
-- `log_close`: p-value 0,8893; chưa bác bỏ H0.
+- `close`: p-value 0,6676; chưa bác bỏ H0.
+- `log_close`: p-value 0,8665; chưa bác bỏ H0.
 - `return`: p-value <= 0,01; bác bỏ H0.
 - ARCH-LM trước GARCH có p-value rất nhỏ.
 
@@ -124,12 +124,13 @@ Student-t và mô hình phương sai có điều kiện.
 
 **Số chính:**
 
-- Holdout leader: ARIMAX Lagged, RMSE 1.863,36; MAPE 2,05%.
-- Rolling-CV leader trong nhóm đã chạy: ETS Damped, mean RMSE 4.726,67.
-- Holdout và CV không xác định một winner thống nhất.
+- Holdout leader: ETS Damped, RMSE 1.939,13; MAPE 2,10%.
+- ETS Damped chỉ hơn Naive khoảng 0,72 RMSE trên holdout.
+- Rolling-CV leader: Naive, mean RMSE 5.353,94.
+- Tất cả fitted models còn residual autocorrelation ở mức 5%.
 - ARIMAX/SARIMA chưa có cùng rolling-CV coverage.
 
-**Hình:** `output/figures/arima_xreg_forecast.png`.
+**Hình:** `output/figures/ets_damped_forecast.png`.
 
 **Người nói:** Nguyễn Đức Học.
 
@@ -173,7 +174,8 @@ Student-t và mô hình phương sai có điều kiện.
 **Nội dung trên slide:**
 
 - Giá không dừng; log return dừng và có ARCH effect.
-- ARIMAX dẫn đầu holdout, ETS Damped dẫn đầu nhóm rolling CV.
+- ETS Damped dẫn holdout rất sát Naive; Naive dẫn rolling CV.
+- Chưa có model phức tạp cải thiện benchmark một cách ổn định.
 - Student-t cải thiện fit rõ so với Normal.
 - eGARCH Student-t cân bằng tốt nhất giữa fit, diagnostics và stability.
 - Pipeline R tạo lại dữ liệu, bảng, hình và báo cáo từ đầu.
