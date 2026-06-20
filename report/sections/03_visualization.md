@@ -1,27 +1,21 @@
-# CHƯƠNG 2: MÔ TẢ DỮ LIỆU VÀ PHÂN TÍCH TRỰC QUAN HÓA
+# Trực quan hóa dữ liệu
 
-Tập lệnh `R/02_visualization.R` sử dụng thư viện `ggplot2` nâng cao và cấu hình hệ phông chữ `extrafont (Arial)` để xuất các đồ thị chất lượng cao với độ phân giải 300 DPI (`output/figures/`). Dưới đây là phân tích chi tiết dựa trên các kết quả trực quan hóa thu được.
+Phần trực quan hóa được thực hiện sau khi dữ liệu đã được làm sạch. Các hình được tạo bằng `R/02_visualization.R` và lưu trong thư mục `output/figures`.
 
-## 2.1. Biểu đồ 1: Chuỗi thời gian Giá đóng cửa điều chỉnh (close_price.png)
+Hình `close_price.png` thể hiện giá đóng cửa đã điều chỉnh của cổ phiếu FPT trong giai đoạn từ 2015-01-05 đến 2026-06-08. Biểu đồ cho thấy xu hướng biến động dài hạn của giá, nhưng không dùng riêng biểu đồ này để kết luận về khả năng sinh lời hay đưa ra khuyến nghị đầu tư.
 
-* **Mô tả trực quan:** Đồ thị biểu diễn diễn biến đường giá đóng cửa điều chỉnh của cổ phiếu FPT một cách liên tục từ năm 2015 đến tháng 06/2026.
-* **Phân tích kinh tế lượng:**
-  * **Giai đoạn 2015 - 2020:** Cổ phiếu FPT duy trì đà tăng trưởng ổn định và bền vững tại vùng giá thấp (dưới 25.000 VNĐ).
-  * **Giai đoạn 2020 - 2022:** Giá cổ phiếu thiết lập xu hướng tăng mạnh, bứt phá nhờ làn sóng chuyển đổi số toàn cầu trong đại dịch COVID-19 và sự gia tăng thanh khoản (dòng tiền rẻ) trên thị trường chứng khoán.
-  * **Giai đoạn 2023 - 2026:** Đây là chu kỳ tăng trưởng mạnh mẽ nhất của FPT. Đường giá thiết lập đỉnh lịch sử tại mốc **129.855,73 VNĐ** vào nửa đầu năm 2026, nhờ động lực tăng trưởng cốt lõi từ mảng Công nghệ thông tin, xuất khẩu phần mềm và công nghiệp chip bán dẫn. 
-  * **Đặc tính chuỗi thời gian:** Chuỗi dữ liệu mang tính **không dừng (Non-stationary)** rõ rệt, thể hiện xu hướng (trend) tăng trưởng dài hạn. Đặc điểm này đòi hỏi phải thực hiện biến đổi sai phân (chuyển sang chuỗi tỷ suất sinh lời) trước khi tiến hành ước lượng các mô hình ARMA/ARIMA tại các chương sau.
+Hình `volume.png` thể hiện khối lượng giao dịch theo thời gian. Biểu đồ giúp quan sát sự thay đổi về mức độ giao dịch giữa các giai đoạn. Tuy nhiên, biểu đồ này chỉ có ý nghĩa mô tả và không đủ để giải thích nguyên nhân kinh tế nếu không có nguồn bổ sung.
 
-## 2.2. Biểu đồ 2: Khối lượng giao dịch hằng ngày (volume.png)
+Hình `returns.png` thể hiện lợi suất log hằng ngày. Các giá trị dao động quanh mức 0 và có những giai đoạn biên độ dao động lớn hơn. Quan sát này gợi ý khả năng phương sai thay đổi theo thời gian, nhưng cần kiểm định và mô hình hóa ở các phần sau.
 
-* **Mô tả trực quan:** Các cột dọc thể hiện mức thanh khoản của từng phiên giao dịch, với khối lượng kỷ lục đạt **415.709.889 cổ phiếu/phiên** và mức trung vị duy trì ở mức hơn 2,7 triệu cổ phiếu.
-* **Phân tích kinh tế lượng:**
-  * Trong giai đoạn 2015 - 2019, thanh khoản của FPT tương đối thấp và biến động đều đặn. 
-  * Từ năm 2021 đến 2026, khối lượng giao dịch tăng vọt kèm theo biên độ dao động lớn. Điều này minh chứng cho sự tham gia mạnh mẽ của các quỹ đầu tư tổ chức và dòng tiền từ nhà đầu tư cá nhân, đưa FPT trở thành một trong những mã cổ phiếu có tính đại chúng và quy mô thanh khoản cao nhất hệ thống.
+Hình `return_distribution.png` trình bày histogram của lợi suất log, kèm đường mật độ thực nghiệm và đường phân phối chuẩn có cùng trung bình và độ lệch chuẩn. Nếu phân phối thực nghiệm lệch khỏi đường chuẩn, điều này gợi ý lợi suất có thể không tuân theo phân phối chuẩn hoàn toàn.
 
-## 2.3. Biểu đồ 3: Hiện tượng Biến động cụm của Tỷ suất sinh lời (returns_professional.png)
+Hình `qqplot_return.png` là QQ-plot của lợi suất log so với phân phối chuẩn. Nếu các điểm lệch khỏi đường thẳng ở hai đuôi, điều này gợi ý khả năng tồn tại đuôi dày. Đây là cơ sở thăm dò để cân nhắc phân phối Student-t trong mô hình biến động, nhưng chưa phải kết luận cuối cùng.
 
-* **Mô tả trực quan:** Đồ thị đường thể hiện sự dao động quanh trục hoành 0 của biến tỷ suất sinh lời (`returns`).
-* **Phân tích kinh tế lượng (Luận cứ khoa học cho mô hình hóa phương sai):**
-  * Biểu đồ chỉ ra hiện tượng **Biến động cụm (Volatility Clustering)** – một đặc tính kinh tế lượng kinh điển của chuỗi thời gian tài chính.
-  * **Biểu hiện cụ thể:** Những giai đoạn thị trường ổn định (năm 2015 - 2017) có biên độ dao động nhỏ và tập trung quy tụ. Ngược lại, vào các giai đoạn khủng hoảng hoặc chuyển giao chu kỳ lớn (như đợt bùng phát dịch COVID-19 năm 2020, nhịp điều chỉnh mạnh của thị trường chứng khoán Việt Nam năm 2022, và các biến động đầu năm 2026), các đường dao động có biên độ lớn (từ -6,99% đến +9,26%) xuất hiện liên tục và tập trung thành các cụm lớn.
-  * **Ý nghĩa mô hình hóa:** Hiện tượng này khẳng định chuỗi tỷ suất sinh lời của FPT tồn tại hiệu ứng **ARCH/GARCH** (phương sai thay đổi theo thời gian). Việc trực quan hóa thành công hiện tượng này là cơ sở khoa học cốt lõi để nghiên cứu đề xuất áp dụng mô hình GARCH nhằm dự báo rủi ro phương sai ở phần sau của bài tập lớn.
+Hình `acf_return.png` và `pacf_return.png` thể hiện tự tương quan và tự tương quan riêng phần của lợi suất log. Hai biểu đồ này được dùng để quan sát cấu trúc phụ thuộc tuyến tính trong chuỗi lợi suất, hỗ trợ bước lựa chọn mô hình chuỗi thời gian ở phần sau.
+
+Hình `squared_returns.png` thể hiện bình phương lợi suất log. Biểu đồ này giúp quan sát các cụm biến động lớn. Nếu các cụm này xuất hiện, đó là dấu hiệu thăm dò của hiện tượng volatility clustering.
+
+Hình `return_by_weekday.png` so sánh phân phối lợi suất theo ngày trong tuần. Biểu đồ này chỉ dùng để quan sát sơ bộ. Nếu khác biệt giữa các ngày không rõ ràng, không nên kết luận có yếu tố mùa vụ theo ngày trong tuần.
+
+Nhìn chung, các biểu đồ trong phần này cho thấy dữ liệu lợi suất cần được xem xét cẩn thận bằng các kiểm định và mô hình ở các phần tiếp theo, đặc biệt là kiểm định tính dừng, tự tương quan và mô hình hóa phương sai thay đổi.
