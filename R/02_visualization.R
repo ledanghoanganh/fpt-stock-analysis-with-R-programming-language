@@ -1,13 +1,10 @@
-# 02_visualization.R
+# Tạo bảng mô tả và chín biểu đồ EDA từ dữ liệu sạch.
 source("R/00_config.R")
-library(scales)
-library(forecast)
+require_packages(c("scales", "forecast"))
+if (!file.exists(CLEAN_DATA_PATH)) stop("Hãy chạy R/01_data_cleaning.R trước.")
 
-if (!file.exists(CLEAN_DATA_PATH)) {
-  stop("Chạy R/01_data_cleaning.R trước.")
-}
-
-df <- readr::read_csv(CLEAN_DATA_PATH, show_col_types = FALSE) %>%
+# Weekday chỉ phục vụ EDA; model input vẫn giữ schema tám cột trong CSV sạch.
+data <- readr::read_csv(CLEAN_DATA_PATH, show_col_types = FALSE) %>%
   mutate(
     date = as.Date(date),
     weekday = factor(
@@ -16,133 +13,118 @@ df <- readr::read_csv(CLEAN_DATA_PATH, show_col_types = FALSE) %>%
       labels = c("Thứ Hai", "Thứ Ba", "Thứ Tư", "Thứ Năm", "Thứ Sáu")
     )
   )
+returns <- filter(data, !is.na(return))
 
-missing_report <- tibble::tibble(
-  variable = names(df),
-  missing_count = colSums(is.na(df)),
-  missing_percentage = 100 * missing_count / nrow(df)
+# Bảng missing cho biết số lượng và tỷ lệ NA của từng biến đang phân tích.
+missing_table <- tibble(
+  variable = names(data),
+  missing_count = colSums(is.na(data)),
+  missing_percentage = 100 * missing_count / nrow(data)
 )
-readr::write_csv(missing_report, file.path(TABLE_DIR, "missing_values.csv"))
+write_project_csv(missing_table, "missing_values.csv")
 
-summary_table <- tibble::tibble(
-  variable = c("close", "volume", "return"),
-  count = c(sum(!is.na(df$close)), sum(!is.na(df$volume)), sum(!is.na(df$return))),
-  mean = c(mean(df$close), mean(df$volume), mean(df$return, na.rm = TRUE)),
-  median = c(median(df$close), median(df$volume), median(df$return, na.rm = TRUE)),
-  sd = c(sd(df$close), sd(df$volume), sd(df$return, na.rm = TRUE)),
-  min = c(min(df$close), min(df$volume), min(df$return, na.rm = TRUE)),
-  max = c(max(df$close), max(df$volume), max(df$return, na.rm = TRUE))
-)
-readr::write_csv(summary_table, file.path(TABLE_DIR, "data_summary.csv"))
-
-theme_project <- ggplot2::theme_minimal(base_size = 11) +
-  ggplot2::theme(
-    plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
-    plot.subtitle = ggplot2::element_text(hjust = 0.5, color = "grey35"),
-    axis.text.x = ggplot2::element_text(angle = 45, hjust = 1),
-    panel.grid.minor = ggplot2::element_blank(),
-    legend.position = "bottom"
-  )
-
-save_plot <- function(filename, plot, width = 10, height = 6) {
-  ggplot2::ggsave(
-    file.path(FIGURE_DIR, filename), plot,
-    width = width, height = height, dpi = 300, bg = "white"
+# Hàm tóm tắt một biến giúp tránh lặp cùng sáu phép tính ba lần.
+summarise_variable <- function(values, name) {
+  valid <- values[!is.na(values)]
+  tibble(
+    variable = name,
+    count = length(valid),
+    mean = mean(valid), median = median(valid), sd = sd(valid),
+    min = min(valid), max = max(valid)
   )
 }
+summary_table <- bind_rows(
+  summarise_variable(data$close, "close"),
+  summarise_variable(data$volume, "volume"),
+  summarise_variable(data$return, "return")
+)
+write_project_csv(summary_table, "data_summary.csv")
 
-p_close <- ggplot2::ggplot(df, ggplot2::aes(date, close)) +
-  ggplot2::geom_line(color = "#1565C0", linewidth = 0.6) +
-  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  ggplot2::scale_y_continuous(labels = scales::label_number(big.mark = ",")) +
-  ggplot2::labs(
-    title = "Giá đóng cửa điều chỉnh của cổ phiếu FPT",
-    subtitle = paste(min(df$date), "đến", max(df$date)),
-    x = "Năm", y = "Giá đóng cửa điều chỉnh (VND)"
-  ) + theme_project
-save_plot("close_price.png", p_close)
+# Dùng một theme và một hàm save để mọi hình có định dạng thống nhất.
+project_theme <- ggplot2::theme_minimal(base_size = 11) +
+  ggplot2::theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, color = "grey35"),
+    axis.text.x = element_text(angle = 45, hjust = 1),
+    panel.grid.minor = element_blank(),
+    legend.position = "bottom"
+  )
+save_plot <- function(name, plot, width = 10, height = 6) {
+  ggsave(file.path(FIGURE_DIR, name), plot, width = width, height = height,
+         dpi = 300, bg = "white")
+}
 
-p_volume <- ggplot2::ggplot(df, ggplot2::aes(date, volume)) +
-  ggplot2::geom_col(fill = "#2E7D32", width = 1) +
-  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  ggplot2::scale_y_continuous(labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
-  ggplot2::labs(
-    title = "Khối lượng giao dịch cổ phiếu FPT",
-    x = "Năm", y = "Khối lượng"
-  ) + theme_project
-save_plot("volume.png", p_volume)
+# Giá level cho thấy trend dài hạn; ADF ở script 03 mới kiểm định tính dừng.
+save_plot("close_price.png", ggplot(data, aes(date, close)) +
+  geom_line(color = "#1565C0", linewidth = 0.6) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(labels = scales::label_number(big.mark = ",")) +
+  labs(title = "Giá đóng cửa điều chỉnh của cổ phiếu FPT",
+       subtitle = paste(min(data$date), "đến", max(data$date)),
+       x = "Năm", y = "Giá đóng cửa điều chỉnh (VND)") + project_theme)
 
-return_df <- df %>% filter(!is.na(return))
+# Volume mô tả thanh khoản và các quan sát cực trị theo thời gian.
+save_plot("volume.png", ggplot(data, aes(date, volume)) +
+  geom_col(fill = "#2E7D32", width = 1) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(labels = scales::label_number(scale_cut = scales::cut_short_scale())) +
+  labs(title = "Khối lượng giao dịch cổ phiếu FPT", x = "Năm", y = "Khối lượng") +
+  project_theme)
 
-p_returns <- ggplot2::ggplot(return_df, ggplot2::aes(date, return)) +
-  ggplot2::geom_line(color = "#B71C1C", linewidth = 0.35) +
-  ggplot2::geom_hline(yintercept = 0, color = "grey40") +
-  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  ggplot2::scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
-  ggplot2::labs(
-    title = "Lợi suất log hằng ngày của cổ phiếu FPT",
-    subtitle = "Các cụm biên độ lớn gợi ý phương sai thay đổi theo thời gian",
-    x = "Năm", y = "Log return"
-  ) + theme_project
-save_plot("returns.png", p_returns)
+# Return quanh 0 nhưng biên độ thay đổi theo thời gian, gợi ý volatility clustering.
+save_plot("returns.png", ggplot(returns, aes(date, return)) +
+  geom_line(color = "#B71C1C", linewidth = 0.35) +
+  geom_hline(yintercept = 0, color = "grey40") +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(title = "Lợi suất log hằng ngày của cổ phiếu FPT",
+       subtitle = "Các cụm biên độ lớn gợi ý phương sai thay đổi theo thời gian",
+       x = "Năm", y = "Log return") + project_theme)
 
-return_mean <- mean(return_df$return)
-return_sd <- sd(return_df$return)
-p_distribution <- ggplot2::ggplot(return_df, ggplot2::aes(return)) +
-  ggplot2::geom_histogram(
-    ggplot2::aes(y = after_stat(density)),
-    bins = 60, fill = "#64B5F6", color = "white"
-  ) +
-  ggplot2::geom_density(color = "#D32F2F", linewidth = 0.8) +
-  ggplot2::stat_function(
-    fun = dnorm,
-    args = list(mean = return_mean, sd = return_sd),
-    color = "#212121", linetype = "dashed", linewidth = 0.8
-  ) +
-  ggplot2::scale_x_continuous(labels = scales::label_percent(accuracy = 1)) +
-  ggplot2::labs(
-    title = "Phân phối lợi suất log hằng ngày",
-    subtitle = "Đỏ: mật độ thực nghiệm; đen đứt nét: phân phối chuẩn cùng mean và SD",
-    x = "Log return", y = "Mật độ"
-  ) + theme_project
-save_plot("return_distribution.png", p_distribution)
+# So sánh mật độ thực nghiệm với Normal có cùng mean và standard deviation.
+save_plot("return_distribution.png", ggplot(returns, aes(return)) +
+  geom_histogram(aes(y = after_stat(density)), bins = 60,
+                 fill = "#64B5F6", color = "white") +
+  geom_density(color = "#D32F2F", linewidth = 0.8) +
+  stat_function(fun = dnorm,
+                args = list(mean = mean(returns$return), sd = sd(returns$return)),
+                color = "#212121", linetype = "dashed", linewidth = 0.8) +
+  scale_x_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(title = "Phân phối lợi suất log hằng ngày",
+       subtitle = "Đỏ: mật độ thực nghiệm; đen đứt nét: Normal cùng mean và SD",
+       x = "Log return", y = "Mật độ") + project_theme)
 
-p_qq <- ggplot2::ggplot(return_df, ggplot2::aes(sample = return)) +
-  ggplot2::stat_qq(color = "#1565C0", alpha = 0.5) +
-  ggplot2::stat_qq_line(color = "#D32F2F") +
-  ggplot2::labs(
-    title = "QQ-plot của lợi suất log",
-    subtitle = "Độ lệch ở hai đuôi cho thấy cần cân nhắc phân phối đuôi dày",
-    x = "Phân vị chuẩn lý thuyết", y = "Phân vị mẫu"
-  ) + theme_project
-save_plot("qqplot_return.png", p_qq)
+# Q-Q plot làm rõ độ lệch ở hai đuôi so với phân phối Normal.
+save_plot("qqplot_return.png", ggplot(returns, aes(sample = return)) +
+  stat_qq(color = "#1565C0", alpha = 0.5) +
+  stat_qq_line(color = "#D32F2F") +
+  labs(title = "Q-Q plot của lợi suất log",
+       subtitle = "Độ lệch ở hai đuôi gợi ý phân phối đuôi dày",
+       x = "Phân vị Normal lý thuyết", y = "Phân vị mẫu") + project_theme)
 
-p_squared <- ggplot2::ggplot(return_df, ggplot2::aes(date, return^2)) +
-  ggplot2::geom_line(color = "#6A1B9A", linewidth = 0.35) +
-  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  ggplot2::labs(
-    title = "Bình phương lợi suất log",
-    subtitle = "Dùng để quan sát volatility clustering",
-    x = "Năm", y = expression(return^2)
-  ) + theme_project
-save_plot("squared_returns.png", p_squared)
+# Bình phương bỏ dấu return để biểu diễn độ lớn biến động theo thời gian.
+save_plot("squared_returns.png", ggplot(returns, aes(date, return^2)) +
+  geom_line(color = "#6A1B9A", linewidth = 0.35) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  labs(title = "Bình phương lợi suất log",
+       subtitle = "Các spike theo cụm minh họa volatility clustering",
+       x = "Năm", y = expression(return^2)) + project_theme)
 
-p_weekday <- ggplot2::ggplot(return_df, ggplot2::aes(weekday, return)) +
-  ggplot2::geom_boxplot(fill = "#80CBC4", outlier.alpha = 0.25) +
-  ggplot2::scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
-  ggplot2::labs(
-    title = "Phân phối lợi suất theo ngày trong tuần",
-    subtitle = "Chỉ dùng làm bằng chứng thăm dò cho mùa vụ tuần",
-    x = NULL, y = "Log return"
-  ) + theme_project
-save_plot("return_by_weekday.png", p_weekday)
+# Boxplot weekday chỉ là bằng chứng thăm dò, không tự chứng minh hiệu ứng lịch.
+save_plot("return_by_weekday.png", ggplot(returns, aes(weekday, return)) +
+  geom_boxplot(fill = "#80CBC4", outlier.alpha = 0.25) +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(title = "Phân phối lợi suất theo ngày trong tuần",
+       subtitle = "Bằng chứng thăm dò cho mùa vụ tuần",
+       x = NULL, y = "Log return") + project_theme)
 
-png(file.path(FIGURE_DIR, "acf_return.png"), width = 1800, height = 1100, res = 180)
-forecast::Acf(return_df$return, lag.max = 40, main = "ACF của lợi suất log")
-dev.off()
+# ACF/PACF dùng base graphics nên mở thiết bị PNG riêng rồi đóng bằng dev.off().
+save_correlation_plot <- function(name, plot_function, title) {
+  png(file.path(FIGURE_DIR, name), width = 1800, height = 1100, res = 180)
+  on.exit(dev.off(), add = TRUE)
+  plot_function(returns$return, lag.max = 40, main = title)
+}
+save_correlation_plot("acf_return.png", forecast::Acf, "ACF của lợi suất log")
+save_correlation_plot("pacf_return.png", forecast::Pacf, "PACF của lợi suất log")
 
-png(file.path(FIGURE_DIR, "pacf_return.png"), width = 1800, height = 1100, res = 180)
-forecast::Pacf(return_df$return, lag.max = 40, main = "PACF của lợi suất log")
-dev.off()
-
-message("Đã xuất bảng và 9 biểu đồ vào output/.")
+message("Đã xuất 2 bảng mô tả và 9 biểu đồ EDA.")

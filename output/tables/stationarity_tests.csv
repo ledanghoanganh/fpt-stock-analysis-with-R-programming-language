@@ -1,4 +1,4 @@
-"Series","ADF_Statistic","P_Value","Stationary"
-"Giá đóng cửa (Close)",-1.73124379311797,0.692116361439286,"Không (Non-stationary)"
-"Log giá đóng cửa (Log Close)",-1.26551292188247,0.889302689768624,"Không (Non-stationary)"
-"Lợi suất Log (Return)",-13.8525997598026,0.01,"Có (Stationary)"
+Series,ADF_Statistic,P_Value,Stationary
+Giá đóng cửa (Close),-1.7891667448947084,0.6675892121196422,Không (Non-stationary)
+Log giá đóng cửa (Log Close),-1.3194376303110338,0.8664647012490113,Không (Non-stationary)
+Lợi suất Log (Return),-13.791444154586419,0.01,Có (Stationary)

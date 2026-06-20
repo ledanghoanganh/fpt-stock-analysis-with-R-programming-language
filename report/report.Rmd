@@ -228,14 +228,14 @@ kable(
 )
 ```
 
-`r best_holdout$model` đứng đầu holdout 30 phiên, nhưng chưa có rolling CV trong output hiện tại. `r best_cv$model` đứng đầu CV trong nhóm đã đánh giá, nhưng bằng chứng holdout/residual không hoàn toàn ủng hộ. Do đó nhóm chưa tuyên bố một mô hình thắng tuyệt đối. Kết luận mạnh hơn đòi hỏi chạy CV cho cùng tập model và cùng fold.
+`r best_holdout$model` đứng đầu holdout 30 phiên nhưng chỉ nhỉnh hơn Naive rất nhỏ. `r best_cv$model` đứng đầu CV trong nhóm đã đánh giá, còn residual Ljung-Box bác bỏ white noise cho tất cả fitted forecast models. Do đó nhóm chưa có bằng chứng model phức tạp cải thiện Naive một cách ổn định. ARIMAX và SARIMA vẫn chưa có rolling CV cùng coverage.
 
-```{r arimax-forecast, fig.cap="Dự báo holdout của ARIMAX với biến trễ"}
-include_required_figure("output/figures/arima_xreg_forecast.png")
+```{r ets-damped-forecast, fig.cap="Dự báo holdout của ETS Damped"}
+include_required_figure("output/figures/ets_damped_forecast.png")
 ```
 
-```{r arimax-diagnostics, fig.cap="Residual diagnostics của ARIMAX"}
-include_required_figure("output/figures/arimax_residual_diagnostics.png")
+```{r ets-damped-diagnostics, fig.cap="Residual diagnostics của ETS Damped"}
+include_required_figure("output/figures/ets_damped_residual_diagnostics.png")
 ```
 
 ## So sánh mô hình volatility

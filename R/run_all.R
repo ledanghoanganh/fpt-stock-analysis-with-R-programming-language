@@ -1,66 +1,57 @@
-# Run the complete reproducible analysis from the project root.
+# Entry point: chạy toàn bộ phân tích và render hai tài liệu Word từ project root.
 
-project_file <- "FPT_Stock_TimeSeries.Rproj"
-if (!file.exists(project_file)) {
-  stop("Run R/run_all.R from the project root containing ", project_file)
+# Project file là dấu hiệu đơn giản nhất rằng working directory đang đúng.
+if (!file.exists("FPT_Stock_TimeSeries.Rproj")) {
+  stop("Hãy chạy R/run_all.R từ thư mục gốc của dự án.")
 }
+source("R/00_config.R")
+require_packages(c(
+  "forecast", "tseries", "FinTS", "rugarch", "scales",
+  "openxlsx", "knitr", "rmarkdown"
+))
 
-required_packages <- c(
-  "tidyverse", "lubridate", "forecast", "tseries", "FinTS", "rugarch",
-  "scales", "openxlsx", "knitr", "rmarkdown"
-)
-missing_packages <- required_packages[
-  !vapply(required_packages, requireNamespace, logical(1), quietly = TRUE)
-]
-if (length(missing_packages) > 0) {
-  stop("Missing packages: ", paste(missing_packages, collapse = ", "))
-}
-
-dir.create("output", recursive = TRUE, showWarnings = FALSE)
+# Ghi cả console output và message vào log để audit lần chạy cuối.
 log_path <- file.path("output", "pipeline_log.txt")
 log_connection <- file(log_path, open = "wt", encoding = "UTF-8")
 sink(log_connection, type = "output", split = TRUE)
 sink(log_connection, type = "message")
-
 on.exit({
   sink(type = "message")
   sink(type = "output")
   close(log_connection)
 }, add = TRUE)
-
 options(warn = 1)
-cat("Pipeline started:", format(Sys.time()), "\n")
+cat("Pipeline started: ", format(Sys.time()), "\n", sep = "")
 
-scripts <- c(
-  "R/01_data_cleaning.R",
-  "R/02_visualization.R",
-  "R/03_stationarity_arima_ets.R",
-  "R/04_garch_volatility.R",
-  "R/05_model_comparison.R",
-  "R/06_export_report_tables.R"
-)
-
-for (script in scripts) {
+# Thứ tự là dependency graph: mỗi script dùng output của script đứng trước.
+scripts <- sprintf("R/%02d_%s.R", 1:6, c(
+  "data_cleaning", "visualization", "stationarity_arima_ets",
+  "garch_volatility", "model_comparison", "export_report_tables"
+))
+purrr::walk(scripts, function(script) {
   cat("\n=== Running", script, "===\n")
   sys.source(script, envir = new.env(parent = globalenv()))
-}
+})
 
+# RStudio đi kèm Pandoc; fallback này hỗ trợ terminal Windows chưa có PATH.
 if (!rmarkdown::pandoc_available()) {
-  rstudio_pandoc <- "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools"
-  if (file.exists(file.path(rstudio_pandoc, "pandoc.exe"))) {
-    Sys.setenv(RSTUDIO_PANDOC = rstudio_pandoc)
+  bundled_pandoc <- "C:/Program Files/RStudio/resources/app/bin/quarto/bin/tools"
+  if (file.exists(file.path(bundled_pandoc, "pandoc.exe"))) {
+    Sys.setenv(RSTUDIO_PANDOC = bundled_pandoc)
   }
 }
-if (!rmarkdown::pandoc_available()) {
-  stop("Pandoc was not found; install RStudio/Quarto or configure RSTUDIO_PANDOC")
-}
+if (!rmarkdown::pandoc_available()) stop("Không tìm thấy Pandoc để render Word.")
 
-cat("\n=== Rendering report/report.docx ===\n")
-rmarkdown::render(
-  "report/report.Rmd",
-  output_file = "report.docx",
-  knit_root_dir = normalizePath("."),
-  quiet = TRUE
+# Render từ source Rmd để Word luôn đồng bộ với CSV/hình của lần chạy này.
+render_targets <- tribble(
+  ~input, ~output,
+  "report/report.Rmd", "report.docx",
+  "presentation/khung_noi_dung_slide.Rmd", "khung_noi_dung_slide.docx"
 )
+purrr::pwalk(render_targets, function(input, output) {
+  cat("\n=== Rendering", output, "===\n")
+  rmarkdown::render(input, output_file = output,
+                    knit_root_dir = normalizePath("."), quiet = TRUE)
+})
 
-cat("Pipeline completed:", format(Sys.time()), "\n")
+cat("Pipeline completed: ", format(Sys.time()), "\n", sep = "")

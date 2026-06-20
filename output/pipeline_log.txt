@@ -1,46 +1,13 @@
-Pipeline started: 2026-06-20 10:42:57 
+Pipeline started: 2026-06-20 12:35:44
 
 === Running R/01_data_cleaning.R ===
-── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
-✔ dplyr     1.2.1     ✔ readr     2.2.0
-✔ forcats   1.0.1     ✔ stringr   1.6.0
-✔ ggplot2   4.0.3     ✔ tibble    3.3.1
-✔ lubridate 1.9.5     ✔ tidyr     1.3.2
-✔ purrr     1.2.2     
-── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
-✖ dplyr::filter() masks stats::filter()
-✖ dplyr::lag()    masks stats::lag()
-ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
-Hoàn tất làm sạch dữ liệu
-Raw rows: 2960
-Removed zero-volume rows: 173
-Repaired OHLC rows after volume filter: 1
-Clean rows: 2787
-Period: 2015-01-05 to 2026-06-08
+Hoàn tất cleaning: 2960 raw -> 2787 clean; loại 173 zero-volume; sửa 1 OHLC row.
 
 === Running R/02_visualization.R ===
-
-Attaching package: 'scales'
-
-The following object is masked from 'package:purrr':
-
-    discard
-
-The following object is masked from 'package:readr':
-
-    col_factor
-
-Đã xuất bảng và 9 biểu đồ vào output/.
+Đã xuất 2 bảng mô tả và 9 biểu đồ EDA.
 
 === Running R/03_stationarity_arima_ets.R ===
-Loading required package: zoo
-
-Attaching package: 'zoo'
-
-The following objects are masked from 'package:base':
-
-    as.Date, as.Date.numeric
-
+Hoàn tất forecast: 7 holdout models và 27 rolling-origin folds.
 
 === Running R/04_garch_volatility.R ===
 GARCH input: 2786 returns from 2015-01-06 to 2026-06-08
@@ -69,18 +36,12 @@ Pre-fit ARCH-LM p-value: 1.093459e-38
 #   nyblom_joint <dbl>, nyblom_5pct_critical <dbl>, pearson_group20_p <dbl>
 
 === Running R/05_model_comparison.R ===
-Exported separate price and volatility comparison tables.
-# A tibble: 2 × 3
-  analysis               provisional_conclusion                       limitation
-  <chr>                  <chr>                                        <chr>     
-1 Price forecast         Holdout leader: ARIMAX (Lagged); rolling-CV… Holdout a…
-2 Conditional volatility Provisional candidate: eGARCH-Student-t      Results a…
+Đã xuất comparison riêng cho forecast và volatility.
 
 === Running R/06_export_report_tables.R ===
-[1] "--- Khởi tạo quá trình tổng hợp báo cáo Excel ---"
-[1] "--- HOÀN THÀNH TẤT CẢ MODULE CODE! ---"
-[1] "Toàn bộ các bảng số liệu đã được gộp thành Excel tại: output/tables/report_tables.xlsx"
-[1] "Giờ đây bạn chỉ cần mở file Excel này lên và bôi đen copy thẳng vào báo cáo Word cuối kỳ."
+Đã xuất workbook: output/tables/report_tables.xlsx
 
-=== Rendering report/report.docx ===
-Pipeline completed: 2026-06-20 10:43:23 
+=== Rendering report.docx ===
+
+=== Rendering khung_noi_dung_slide.docx ===
+Pipeline completed: 2026-06-20 12:36:58

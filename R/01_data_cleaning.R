@@ -1,139 +1,101 @@
-# 01_data_cleaning.R
+# Làm sạch dữ liệu OHLCV và tạo log return dùng cho toàn bộ mô hình.
 source("R/00_config.R")
 
-required_columns <- c("date", "open", "high", "low", "close", "volume")
+# Sáu cột này là hợp đồng dữ liệu giữa notebook và pipeline R.
+raw_columns <- c("date", "open", "high", "low", "close", "volume")
+if (!file.exists(RAW_DATA_PATH)) stop("Không tìm thấy ", RAW_DATA_PATH)
 
-if (!file.exists(RAW_DATA_PATH)) {
-  stop("Không tìm thấy data/raw/FPT_stock_data.csv")
-}
+# Đọc raw, chuẩn hóa tên cột rồi xác nhận schema trước khi tính toán.
+raw <- readr::read_csv(RAW_DATA_PATH, show_col_types = FALSE)
+names(raw) <- tolower(trimws(names(raw)))
+assert_columns(raw, raw_columns, "Dữ liệu thô")
 
-df_raw <- readr::read_csv(RAW_DATA_PATH, show_col_types = FALSE)
-names(df_raw) <- tolower(trimws(names(df_raw)))
-
-missing_columns <- setdiff(required_columns, names(df_raw))
-if (length(missing_columns) > 0) {
-  stop("Dữ liệu thô thiếu cột: ", paste(missing_columns, collapse = ", "))
-}
-
-df_checked <- df_raw %>%
+# Chỉ giữ schema chính thức, ép kiểu và sắp xếp theo thời gian.
+checked <- raw %>%
   transmute(
     date = as.Date(date),
-    open = as.numeric(open),
-    high = as.numeric(high),
-    low = as.numeric(low),
-    close = as.numeric(close),
-    volume = as.numeric(volume)
+    across(all_of(raw_columns[-1]), as.numeric)
   ) %>%
   arrange(date)
 
-# Yahoo Finance can contain sub-cent floating-point differences. Only treat an
-# OHLC relation as inconsistent when it exceeds this absolute tolerance.
-ohlc_tolerance <- 1e-8
-high_is_invalid <- function(data) {
-  data$high + ohlc_tolerance < pmax(data$open, data$close)
-}
-low_is_invalid <- function(data) {
-  data$low - ohlc_tolerance > pmin(data$open, data$close)
-}
+# Bỏ qua chênh lệch floating-point nhỏ hơn 1e-8 khi kiểm tra quan hệ OHLC.
+OHLC_TOLERANCE <- 1e-8
+invalid_high <- function(data) data$high + OHLC_TOLERANCE < pmax(data$open, data$close)
+invalid_low <- function(data) data$low - OHLC_TOLERANCE > pmin(data$open, data$close)
 
-raw_high_error <- sum(high_is_invalid(df_checked), na.rm = TRUE)
-raw_low_error <- sum(low_is_invalid(df_checked), na.rm = TRUE)
-
-df_nonzero_volume <- df_checked %>%
-  filter(volume > 0)
-
-nonzero_high_error <- sum(high_is_invalid(df_nonzero_volume), na.rm = TRUE)
-nonzero_low_error <- sum(low_is_invalid(df_nonzero_volume), na.rm = TRUE)
-
-quality_report <- tibble::tibble(
+# Tạo một hàng quality report cho mỗi điều kiện để dễ audit và trình bày.
+quality_report <- tibble(
   check = c(
-    "raw_rows",
-    "invalid_date",
-    "duplicate_date",
-    "missing_ohlcv",
-    "non_positive_price",
-    "negative_volume",
-    "zero_volume",
-    "raw_high_below_open_or_close",
-    "raw_low_above_open_or_close",
-    "high_below_open_or_close_after_volume_filter",
-    "low_above_open_or_close_after_volume_filter",
-    "ohlc_rows_repaired_after_volume_filter"
+    "raw_rows", "invalid_date", "duplicate_date", "missing_ohlcv",
+    "non_positive_price", "negative_volume", "zero_volume",
+    "raw_high_below_open_or_close", "raw_low_above_open_or_close"
   ),
   count = c(
-    nrow(df_checked),
-    sum(is.na(df_checked$date)),
-    sum(duplicated(df_checked$date)),
-    sum(!complete.cases(df_checked[, c("open", "high", "low", "close", "volume")])),
-    sum(df_checked$open <= 0 | df_checked$high <= 0 |
-          df_checked$low <= 0 | df_checked$close <= 0, na.rm = TRUE),
-    sum(df_checked$volume < 0, na.rm = TRUE),
-    sum(df_checked$volume == 0, na.rm = TRUE),
-    raw_high_error,
-    raw_low_error,
-    nonzero_high_error,
-    nonzero_low_error,
-    sum(
-      high_is_invalid(df_nonzero_volume) | low_is_invalid(df_nonzero_volume),
-      na.rm = TRUE
-    )
+    nrow(checked),
+    sum(is.na(checked$date)),
+    sum(duplicated(checked$date)),
+    sum(!complete.cases(checked[raw_columns[-1]])),
+    sum(rowSums(checked[c("open", "high", "low", "close")] <= 0, na.rm = TRUE) > 0),
+    sum(checked$volume < 0, na.rm = TRUE),
+    sum(checked$volume == 0, na.rm = TRUE),
+    sum(invalid_high(checked), na.rm = TRUE),
+    sum(invalid_low(checked), na.rm = TRUE)
   )
 )
 
-readr::write_csv(quality_report, file.path(TABLE_DIR, "data_quality_report.csv"))
+# Loại các hàng không có giao dịch trước khi kiểm tra/sửa OHLC cho model input.
+nonzero <- filter(checked, volume > 0)
+repair_rows <- invalid_high(nonzero) | invalid_low(nonzero)
+quality_report <- bind_rows(
+  quality_report,
+  tibble(
+    check = c(
+      "high_below_open_or_close_after_volume_filter",
+      "low_above_open_or_close_after_volume_filter",
+      "ohlc_rows_repaired_after_volume_filter"
+    ),
+    count = c(
+      sum(invalid_high(nonzero), na.rm = TRUE),
+      sum(invalid_low(nonzero), na.rm = TRUE),
+      sum(repair_rows, na.rm = TRUE)
+    )
+  )
+)
+write_project_csv(quality_report, "data_quality_report.csv")
 
-fatal_checks <- quality_report %>%
-  filter(check %in% c(
-    "invalid_date", "duplicate_date", "missing_ohlcv",
-    "non_positive_price", "negative_volume"
-  ))
-
-if (any(fatal_checks$count > 0)) {
+# Các lỗi này làm dữ liệu không còn đáng tin, vì vậy pipeline phải dừng.
+fatal_checks <- c(
+  "invalid_date", "duplicate_date", "missing_ohlcv",
+  "non_positive_price", "negative_volume"
+)
+if (any(quality_report$count[quality_report$check %in% fatal_checks] > 0)) {
   print(quality_report)
-  stop("Dữ liệu thô có lỗi nghiêm trọng. Không được chạy model.")
+  stop("Dữ liệu thô có lỗi nghiêm trọng; không được chạy mô hình.")
 }
 
-# Loại volume = 0 vì không phải phiên giao dịch hữu ích.
-# Sau đó sửa OHLC để high/low bao phủ open, close trong dữ liệu sạch.
-df_clean <- df_nonzero_volume %>%
+# Sửa đúng các quan hệ OHLC vượt tolerance, rồi tạo log-price và log return.
+clean <- nonzero %>%
   distinct(date, .keep_all = TRUE) %>%
   arrange(date) %>%
   mutate(
-    high = if_else(
-      high + ohlc_tolerance < pmax(open, close),
-      pmax(open, high, close),
-      high
-    ),
-    low = if_else(
-      low - ohlc_tolerance > pmin(open, close),
-      pmin(open, low, close),
-      low
-    ),
+    high = if_else(invalid_high(pick(everything())), pmax(open, high, close), high),
+    low = if_else(invalid_low(pick(everything())), pmin(open, low, close), low),
     log_close = log(close),
     return = log_close - lag(log_close)
   )
 
-if (nrow(df_clean) < 500) {
-  stop("Dữ liệu sạch có quá ít quan sát.")
-}
-if (sum(is.na(df_clean$return)) != 1) {
-  stop("Cột return phải chỉ có đúng một NA ở dòng đầu tiên.")
-}
-if (anyDuplicated(df_clean$date) > 0) {
-  stop("Dữ liệu sạch còn ngày trùng.")
-}
-if (any(high_is_invalid(df_clean), na.rm = TRUE)) {
-  stop("Dữ liệu sạch còn lỗi high.")
-}
-if (any(low_is_invalid(df_clean), na.rm = TRUE)) {
-  stop("Dữ liệu sạch còn lỗi low.")
+# Assertions biến các giả định cuối thành điều kiện máy có thể kiểm chứng.
+if (nrow(clean) < 500) stop("Dữ liệu sạch có quá ít quan sát.")
+if (sum(is.na(clean$return)) != 1) stop("Return phải có đúng một NA ở dòng đầu.")
+if (anyDuplicated(clean$date)) stop("Dữ liệu sạch còn ngày trùng.")
+if (any(invalid_high(clean), na.rm = TRUE) || any(invalid_low(clean), na.rm = TRUE)) {
+  stop("Dữ liệu sạch còn vi phạm quan hệ OHLC.")
 }
 
-readr::write_csv(df_clean, CLEAN_DATA_PATH, na = "NA")
-
-message("Hoàn tất làm sạch dữ liệu")
-message("Raw rows: ", nrow(df_checked))
-message("Removed zero-volume rows: ", sum(df_checked$volume == 0))
-message("Repaired OHLC rows after volume filter: ", quality_report$count[quality_report$check == "ohlc_rows_repaired_after_volume_filter"])
-message("Clean rows: ", nrow(df_clean))
-message("Period: ", min(df_clean$date), " to ", max(df_clean$date))
+# Đây là input duy nhất cho EDA, forecast và GARCH.
+readr::write_csv(clean, CLEAN_DATA_PATH, na = "NA")
+message(
+  "Hoàn tất cleaning: ", nrow(checked), " raw -> ", nrow(clean),
+  " clean; loại ", sum(checked$volume == 0), " zero-volume; sửa ",
+  sum(repair_rows), " OHLC row."
+)

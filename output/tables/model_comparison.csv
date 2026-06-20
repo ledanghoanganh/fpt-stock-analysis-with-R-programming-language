@@ -1,3 +1,3 @@
 analysis,provisional_conclusion,limitation
-Price forecast,Holdout leader: ARIMAX (Lagged); rolling-CV leader among evaluated models: ETS Damped,Holdout and rolling-CV evidence do not identify one universal winner
-Conditional volatility,Provisional candidate: eGARCH-Student-t,Results are provisional until final clean-data rerun and distribution limitations remain
+Price forecast,Holdout leader: ETS Damped; rolling-CV leader among evaluated models: Naive,Holdout and rolling-CV evidence do not identify one universal winner
+Conditional volatility,Balanced candidate: eGARCH-Student-t,Distribution fit remains a limitation
