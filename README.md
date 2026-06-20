@@ -2,7 +2,7 @@
 
 > **Môn học:** Lập trình R cho phân tích
 >
-> **Nhóm:** 01
+> **Nhóm:** 06
 >
 > **Giảng viên:** TS. Phan Thị Thể
 >
@@ -170,7 +170,7 @@ Xem [`output/tables/volatility_model_comparison.csv`](output/tables/volatility_m
 ├── report/
 │   ├── report.Rmd
 │   ├── report.docx
-│   └── sections/                 # Tài liệu cũ/tham khảo; report chính là report.Rmd
+│   └── sections/                 # Sáu chương được report.Rmd knit trực tiếp
 └── docs/
     ├── guide.md
     ├── guide_nguoi_1.md

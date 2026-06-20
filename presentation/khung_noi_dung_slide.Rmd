@@ -1,6 +1,6 @@
 ---
 title: "Phân tích chuỗi thời gian và dự báo cổ phiếu FPT"
-subtitle: "Lập trình R cho phân tích - Nhóm 01 | Giảng viên: TS. Phan Thị Thể"
+subtitle: "Lập trình R cho phân tích - Nhóm 06 | Giảng viên: TS. Phan Thị Thể"
 author: |
   Trần Thiên Lực - 24133037  
   Nguyễn Đức Học - 24162039  
@@ -47,7 +47,7 @@ trước giảng viên. Mỗi mục cấp hai (`##`) tương ứng **một slide
 - Nguyễn Đức Học — MSSV 24162039
 - Lê Đặng Hoàng Anh — MSSV 24162006
 - Môn học: Lập trình R cho phân tích
-- Nhóm: 01
+- Nhóm: 06
 - Giảng viên: TS. Phan Thị Thể
 
 **Người nói:** ... — giới thiệu nhóm và mục tiêu (~30 giây).

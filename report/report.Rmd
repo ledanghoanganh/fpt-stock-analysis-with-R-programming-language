@@ -1,6 +1,6 @@
 ---
 title: "Dự báo giá và phân tích biến động cổ phiếu FPT bằng mô hình chuỗi thời gian"
-subtitle: "Môn: Lập trình R cho phân tích - Nhóm 01 | Giảng viên: TS. Phan Thị Thể"
+subtitle: "Môn: Lập trình R cho phân tích - Nhóm 06 | Giảng viên: TS. Phan Thị Thể"
 author: "Trần Thiên Lực - 24133037; Nguyễn Đức Học - 24162039; Lê Đặng Hoàng Anh - 24162006"
 date: "`r format(Sys.Date(), '%d/%m/%Y')`"
 output:
@@ -12,338 +12,140 @@ lang: vi
 ---
 
 ```{r setup, include=FALSE}
-project_root <- if (file.exists("FPT_Stock_TimeSeries.Rproj")) {
-  normalizePath(".")
-} else {
-  normalizePath("..")
-}
-knitr::opts_knit$set(root.dir = project_root)
-knitr::opts_chunk$set(
-  echo = FALSE,
-  warning = FALSE,
-  message = FALSE,
-  out.width = "95%"
-)
+# Cho phép render từ project root hoặc từ thư mục report/ trong RStudio.
+project_root <- if (file.exists("FPT_Stock_TimeSeries.Rproj")) "." else ".."
+knitr::opts_knit$set(root.dir = normalizePath(project_root))
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE,
+                      out.width = "95%")
 
 library(readr)
 library(dplyr)
 library(knitr)
 
+# Báo lỗi sớm nếu pipeline chưa tạo đủ input cho báo cáo.
 read_required_csv <- function(path) {
   if (!file.exists(path)) stop("Thiếu output bắt buộc: ", path)
   readr::read_csv(path, show_col_types = FALSE)
 }
-
 include_required_figure <- function(path) {
   if (!file.exists(path)) stop("Thiếu hình bắt buộc: ", path)
-  knitr::include_graphics(
-    normalizePath(path, winslash = "/", mustWork = TRUE),
-    rel_path = FALSE
-  )
+  knitr::include_graphics(normalizePath(path, winslash = "/", mustWork = TRUE),
+                         rel_path = FALSE)
 }
-
 fmt_number <- function(x, digits = 2) {
   format(round(x, digits), big.mark = ",", scientific = FALSE, trim = TRUE)
 }
+fmt_p <- function(x) ifelse(x < 0.0001, format(x, scientific = TRUE, digits = 3),
+                            format(round(x, 4), nsmall = 4))
 
+# Đọc một lần; mọi section con dùng chung các object này.
 clean_data <- read_required_csv("data/processed/fpt_clean.csv")
+quality_report <- read_required_csv("output/tables/data_quality_report.csv")
 data_summary <- read_required_csv("output/tables/data_summary.csv")
 missing_values <- read_required_csv("output/tables/missing_values.csv")
 stationarity <- read_required_csv("output/tables/stationarity_tests.csv")
 price_comparison <- read_required_csv("output/tables/price_forecast_comparison.csv")
+forecast_cv_raw <- read_required_csv("output/tables/forecast_cv_metrics_raw.csv")
 forecast_diagnostics <- read_required_csv("output/tables/forecast_diagnostics.csv")
+garch_diagnostics_long <- read_required_csv("output/tables/garch_diagnostics.csv")
 volatility_comparison <- read_required_csv("output/tables/volatility_model_comparison.csv")
 garch_parameters <- read_required_csv("output/tables/garch_parameters.csv")
-garch_diagnostics <- read_required_csv("output/tables/garch_diagnostic_summary.csv")
 
+# Các đại lượng dùng lặp lại trong abstract, chương kết quả và slide.
 clean_data$date <- as.Date(clean_data$date)
-analysis_start <- min(clean_data$date, na.rm = TRUE)
-analysis_end <- max(clean_data$date, na.rm = TRUE)
+analysis_start <- min(clean_data$date)
+analysis_end <- max(clean_data$date)
 n_observations <- nrow(clean_data)
 n_returns <- sum(is.finite(clean_data$return))
-zero_volume_rows <- sum(clean_data$volume == 0, na.rm = TRUE)
+quality_value <- function(check_name) quality_report$count[quality_report$check == check_name]
+raw_rows <- quality_value("raw_rows")
+zero_volume_removed <- quality_value("zero_volume")
+ohlc_repaired <- quality_value("ohlc_rows_repaired_after_volume_filter")
 
-best_holdout <- price_comparison %>% slice_min(rmse, n = 1, with_ties = FALSE)
-best_cv <- price_comparison %>%
-  filter(!is.na(cv_mean_rmse)) %>%
+best_holdout <- slice_min(price_comparison, rmse, n = 1, with_ties = FALSE)
+best_cv <- price_comparison %>% filter(!is.na(cv_mean_rmse)) %>%
   slice_min(cv_mean_rmse, n = 1, with_ties = FALSE)
-volatility_candidate <- volatility_comparison %>%
-  filter(provisional_candidate)
+naive_holdout <- filter(price_comparison, model == "Naive")
+holdout_gain <- naive_holdout$rmse - best_holdout$rmse
+n_cv_folds <- n_distinct(forecast_cv_raw$split)
+n_forecast_diagnostics_pass <- sum(forecast_diagnostics$lb_p_value >= 0.05)
+return_summary <- filter(data_summary, variable == "return")
+volatility_candidate <- filter(volatility_comparison, provisional_candidate)
+pre_arch <- garch_diagnostics_long %>%
+  filter(model == "Raw return", test == "ARCH-LM raw return")
 ```
 
 # Tóm tắt {-}
 
-Nghiên cứu phân tích chuỗi giá cổ phiếu FPT trong giai đoạn `r analysis_start` đến `r analysis_end` bằng R. Quy trình gồm kiểm tra dữ liệu, trực quan hóa, kiểm định tính dừng, dự báo mức giá và mô hình hóa phương sai có điều kiện. Nhóm so sánh các benchmark Naive/Drift với ARIMA, SARIMA, ETS, ETS Damped và ARIMAX trên holdout 30 phiên; một số mô hình còn được đánh giá bằng rolling-origin cross-validation. Với volatility, nhóm so sánh sGARCH-Normal, sGARCH-Student-t, eGARCH-Student-t và GJR-GARCH-Student-t trên cùng chuỗi log return.
+Nghiên cứu xây dựng một pipeline R có thể tái lập để phân tích cổ phiếu FPT trong giai đoạn `r analysis_start` đến `r analysis_end`. Dữ liệu Yahoo Finance được kiểm tra chất lượng, trực quan hóa, kiểm định tính dừng, dùng để đánh giá bảy phương pháp dự báo giá và bốn specification GARCH. Hai bài toán được tách biệt: dự báo mức giá đóng cửa và mô hình hóa phương sai có điều kiện của log return.
 
-Trên holdout hiện tại, `r best_holdout$model` có RMSE thấp nhất (`r fmt_number(best_holdout$rmse)`), trong khi `r best_cv$model` có RMSE rolling-CV trung bình thấp nhất (`r fmt_number(best_cv$cv_mean_rmse)`) trong nhóm đã được cross-validation. Hai kết quả không xác định một mô hình dự báo giá thắng tuyệt đối. Đối với volatility, `r ifelse(nrow(volatility_candidate) == 1, volatility_candidate$model, "chưa có mô hình")` là lựa chọn cân bằng nhờ AIC cạnh tranh, residual diagnostics đạt và Nyblom joint stability không bị bác bỏ ở mức 5%. Tất cả kết quả trong báo cáo được tái sinh sau data handoff cuối.
+Trên holdout 30 phiên, `r best_holdout$model` có RMSE thấp nhất (`r fmt_number(best_holdout$rmse)`), nhưng chỉ thấp hơn Naive `r fmt_number(holdout_gain)` đơn vị. Trong rolling-origin CV, `r best_cv$model` dẫn đầu nhóm có cùng coverage với mean RMSE `r fmt_number(best_cv$cv_mean_rmse)`. Ljung-Box bác bỏ giả thuyết white-noise residual cho tất cả fitted forecast models, nên chưa có bằng chứng mô hình phức tạp cải thiện Naive một cách ổn định. Với volatility, `r volatility_candidate$model` là ứng viên cân bằng nhờ AIC gần GJR-GARCH, core residual diagnostics đạt và Nyblom joint stability không bị bác bỏ; adjusted Pearson GOF vẫn là hạn chế.
 
 **Từ khóa:** FPT, chuỗi thời gian, ARIMA, ETS, GARCH, volatility, R.
 
 \newpage
 
-# Giới thiệu
-
-Giá cổ phiếu vừa có xu hướng dài hạn vừa có mức biến động thay đổi theo thời gian. Vì vậy, một mô hình duy nhất khó trả lời đồng thời hai câu hỏi: mức giá tương lai có thể nằm ở đâu, và mức bất định quanh kỳ vọng đó thay đổi như thế nào. Đề tài tách bài toán thành hai phần:
-
-1. Dự báo mức giá đóng cửa bằng các benchmark và mô hình chuỗi thời gian.
-2. Mô hình hóa conditional volatility của log return bằng họ GARCH.
-
-Các câu hỏi nghiên cứu chính là:
-
-- Chuỗi giá và log return của FPT có dừng hay không?
-- Mô hình phức tạp có cải thiện so với Naive/Drift trên dữ liệu ngoài mẫu không?
-- Return có ARCH effect và volatility clustering không?
-- Student-t và các cấu trúc bất đối xứng có phù hợp hơn sGARCH-Normal không?
-- Sau khi fit, standardized residual còn autocorrelation, ARCH effect hoặc sign bias không?
-
-Mục tiêu của đề tài là thực hành quy trình phân tích có thể tái lập bằng R, không đưa ra khuyến nghị mua bán chứng khoán.
-
-# Dữ liệu
-
-## Nguồn và phạm vi
-
-Dữ liệu được lưu tại `data/raw/FPT_stock_data.csv`, tải từ Yahoo Finance với mã `FPT.VN` và tùy chọn `auto_adjust = TRUE`, gồm OHLCV theo ngày. Tệp sạch có `r n_observations` dòng, từ `r analysis_start` đến `r analysis_end`. Notebook, README và báo cáo sử dụng thống nhất nguồn và schema này.
-
-Các biến dùng trong phân tích:
-
-| Biến | Ý nghĩa |
-|---|---|
-| `date` | Ngày quan sát |
-| `open`, `high`, `low`, `close` | Giá mở cửa, cao nhất, thấp nhất và đóng cửa |
-| `volume` | Khối lượng giao dịch |
-| `log_close` | Log tự nhiên của giá đóng cửa |
-| `return` | Log return, bằng `log(close_t)-log(close_(t-1))` |
-
-Log return được tính theo:
-
-\[
-r_t = \log(P_t)-\log(P_{t-1}) = \log\left(\frac{P_t}{P_{t-1}}\right).
-\]
-
-## Kiểm tra chất lượng
-
-Script `R/01_data_cleaning.R` chuẩn hóa ngày, kiểu số, sắp xếp thời gian và tạo biến log return. Dòng đầu của `return` thiếu theo định nghĩa vì không có giá phiên trước. Quy trình đã loại 173 dòng thô có `volume = 0`; dữ liệu sạch còn `r zero_volume_rows` dòng như vậy. Kiểm tra OHLC dùng tolerance `1e-8` và chuẩn hóa một dòng bất thường thực sự. Tất cả model và metric đã được tái sinh từ dữ liệu sạch cuối.
-
-```{r missing-table}
-kable(
-  missing_values,
-  caption = "Giá trị thiếu theo biến trong dữ liệu hiện tại",
-  digits = 4
-)
+```{r introduction, child='report/sections/01_introduction.md'}
 ```
 
-```{r descriptive-table}
-kable(
-  data_summary,
-  caption = "Thống kê mô tả dữ liệu hiện tại",
-  digits = 4
-)
+```{r data-section, child='report/sections/02_data.md'}
 ```
 
-# Trực quan hóa dữ liệu
-
-## Mức giá và thanh khoản
-
-```{r price-figure, fig.cap="Diễn biến giá đóng cửa FPT"}
-include_required_figure("output/figures/close_price.png")
+```{r visualization-section, child='report/sections/03_visualization.md'}
 ```
 
-Chuỗi giá có xu hướng dài hạn và nhiều thay đổi về mức, nên không nên giả định dừng chỉ từ biểu đồ. Những nguyên nhân kinh tế cụ thể không được suy ra từ hình nếu không có nguồn sự kiện độc lập.
-
-```{r volume-figure, fig.cap="Khối lượng giao dịch FPT theo thời gian"}
-include_required_figure("output/figures/volume.png")
+```{r forecast-section, child='report/sections/04_modeling_arima_ets.md'}
 ```
 
-Biểu đồ volume cho thấy thanh khoản không đồng đều. Các quan sát volume bằng 0 là vấn đề chất lượng dữ liệu cần xử lý, không mặc nhiên được xem là phiên giao dịch bình thường.
-
-## Log return và phân phối
-
-```{r return-figure, fig.cap="Log return của cổ phiếu FPT"}
-include_required_figure("output/figures/returns.png")
+```{r garch-section, child='report/sections/05_garch_results_discussion.md'}
 ```
 
-Return dao động quanh 0 nhưng các giai đoạn biên độ lớn có xu hướng xuất hiện gần nhau, gợi ý volatility clustering. Đây mới là bằng chứng thăm dò; ARCH-LM được dùng để kiểm định chính thức.
-
-```{r distribution-figure, fig.cap="Phân phối return hiện tại"}
-include_required_figure("output/figures/return_distribution.png")
+```{r conclusion-section, child='report/sections/06_conclusion.md'}
 ```
-
-Phân phối có nhiều quan sát ở phần đuôi. Vì vậy nhóm so sánh Normal với standardized Student-t trong phần GARCH.
-
-# Mô hình hóa dữ liệu
-
-## Tính dừng
-
-ADF kiểm định `H0`: chuỗi có unit root và không dừng. P-value lớn được diễn giải là “chưa đủ bằng chứng bác bỏ H0”, không phải “chấp nhận H0”.
-
-```{r adf-table}
-kable(stationarity, caption = "Kết quả kiểm định ADF", digits = 4)
-```
-
-Kết quả hiện tại cho thấy `close` và `log_close` không dừng, trong khi `return` có p-value được `adf.test()` báo ở ngưỡng nhỏ nhất 0.01. Do đó return được dùng cho GARCH, còn mô hình giá phải xử lý tính không dừng qua sai phân/trạng thái.
-
-## Mô hình dự báo giá
-
-Nhóm sử dụng:
-
-- **Naive:** mọi dự báo bằng quan sát cuối tập train.
-- **Drift:** random walk có độ trôi trung bình.
-- **ARIMA/SARIMA:** mô hình AR, sai phân và MA; SARIMA chỉ có giá trị khi dữ liệu hỗ trợ mùa vụ.
-- **ETS/ETS Damped:** mô hình trạng thái với level/trend; damped trend hạn chế ngoại suy tuyến tính dài hạn.
-- **ARIMAX (Lagged):** ARIMA kết hợp biến giải thích trễ; cần kiểm tra nghiêm ngặt leakage và khả năng có xreg tại thời điểm dự báo.
-
-Dữ liệu được chia theo thời gian, không shuffle. Ngoài holdout 30 phiên, rolling-origin CV được dùng cho nhóm mô hình có output CV hiện tại. Các metric gồm RMSE, MAE và MAPE; tất cả đều có hướng “nhỏ hơn tốt hơn”.
-
-## Mô hình volatility
-
-Mean equation cơ bản là:
-
-\[
-r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t.
-\]
-
-sGARCH(1,1) có variance equation:
-
-\[
-\sigma_t^2=\omega+\alpha_1\epsilon_{t-1}^2+\beta_1\sigma_{t-1}^2.
-\]
-
-Nhóm so sánh Normal và Student-t, sau đó bổ sung eGARCH và GJR-GARCH để mô hình hóa phản ứng bất đối xứng. Tất cả specification dùng cùng `r n_returns` return hợp lệ và mean equation ARMA(0,0), nhờ vậy AIC/BIC có thể so sánh tương đối.
-
-# Thực nghiệm, kết quả và thảo luận
-
-## So sánh dự báo giá
-
-```{r price-comparison-table}
-price_report <- price_comparison %>%
-  select(
-    model, rmse, mae, mape, final_rmse_rank,
-    cv_mean_rmse, cv_mean_mape, cv_rmse_rank,
-    residual_ljung_box_p, evidence_assessment
-  )
-kable(
-  price_report,
-  caption = "So sánh mô hình dự báo giá: holdout, rolling CV và diagnostics",
-  digits = 4
-)
-```
-
-`r best_holdout$model` đứng đầu holdout 30 phiên nhưng chỉ nhỉnh hơn Naive rất nhỏ. `r best_cv$model` đứng đầu CV trong nhóm đã đánh giá, còn residual Ljung-Box bác bỏ white noise cho tất cả fitted forecast models. Do đó nhóm chưa có bằng chứng model phức tạp cải thiện Naive một cách ổn định. ARIMAX và SARIMA vẫn chưa có rolling CV cùng coverage.
-
-```{r ets-damped-forecast, fig.cap="Dự báo holdout của ETS Damped"}
-include_required_figure("output/figures/ets_damped_forecast.png")
-```
-
-```{r ets-damped-diagnostics, fig.cap="Residual diagnostics của ETS Damped"}
-include_required_figure("output/figures/ets_damped_residual_diagnostics.png")
-```
-
-## So sánh mô hình volatility
-
-ARCH-LM trước fit có p-value rất nhỏ, hỗ trợ sử dụng conditional variance model. Sau fit, nhóm kiểm tra Ljung-Box trên standardized residual, Ljung-Box trên squared standardized residual, ARCH-LM, sign bias, Nyblom stability và adjusted Pearson goodness-of-fit.
-
-```{r volatility-comparison-table}
-volatility_report <- volatility_comparison %>%
-  select(
-    model, aic, bic, delta_aic, persistence,
-    core_diagnostics_pass, sign_bias_pass,
-    parameter_stability_pass, distribution_fit_pass,
-    provisional_candidate, evidence_assessment
-  )
-kable(
-  volatility_report,
-  caption = "So sánh GARCH bằng fit, persistence và diagnostics",
-  digits = 5
-)
-```
-
-GJR-GARCH-Student-t có AIC nhỏ nhất, nhưng Nyblom bác bỏ stability và persistence gần biên 1. eGARCH-Student-t có AIC chỉ kém rất nhỏ, core residual diagnostics đạt và Nyblom joint statistic không vượt critical value 5%. Vì vậy eGARCH được chọn làm ứng viên cân bằng theo quy tắc định trước, không chỉ theo AIC.
-
-```{r garch-comparison-figure, fig.cap="Conditional volatility từ bốn specification GARCH"}
-include_required_figure("output/figures/garch_model_comparison.png")
-```
-
-```{r garch-acf-figure, fig.cap="ACF của standardized residual và squared standardized residual"}
-include_required_figure("output/figures/garch_acf_diagnostics.png")
-```
-
-Core tests không phát hiện serial correlation hoặc ARCH effect còn lại ở mức 5% cho cả bốn model. Tuy nhiên, adjusted Pearson GOF bác bỏ distribution fit ở cả bốn specification. Điều này cho thấy conditional variance dynamics được cải thiện nhưng phân phối/điểm khối lượng tại zero hoặc structural breaks vẫn chưa được mô tả đầy đủ.
-
-```{r news-impact-figure, fig.cap="News-impact curves của eGARCH và GJR-GARCH"}
-include_required_figure("output/figures/garch_news_impact.png")
-```
-
-News-impact curves cho thấy shock âm và dương cùng độ lớn có tác động khác nhau lên conditional variance. Đây là bằng chứng trực quan cho cấu trúc bất đối xứng; việc kết luận leverage phải đi kèm dấu, ý nghĩa tham số và quy ước phương trình của package.
-
-```{r garch-parameter-table}
-candidate_parameters <- garch_parameters %>%
-  filter(model == "eGARCH-Student-t") %>%
-  select(parameter, estimate, robust_std_error, robust_p_value)
-kable(
-  candidate_parameters,
-  caption = "Tham số eGARCH-Student-t với robust standard errors",
-  digits = 6
-)
-```
-
-# Kết luận
-
-Chuỗi giá FPT không dừng trong mức giá, trong khi log return dừng và có ARCH effect. Với dự báo giá, kết quả holdout và rolling CV hiện chưa thống nhất về một model thắng tuyệt đối; đây là lý do benchmark và nhiều cửa sổ đánh giá quan trọng hơn một MAPE đơn lẻ. Với volatility, Student-t cải thiện AIC/BIC rõ so với Normal, còn eGARCH-Student-t là ứng viên cân bằng nhờ AIC gần GJR, core diagnostics đạt và Nyblom joint stability đạt.
-
-Kết quả không phải khuyến nghị đầu tư. Những hạn chế chính gồm structural instability ở ba trong bốn specification GARCH, Pearson GOF bị bác bỏ cho cả bốn model, ARIMAX/SARIMA chưa có cùng rolling CV, và chưa đánh giá volatility forecast ngoài mẫu bằng loss function hoặc VaR backtest.
-
-Trước bản nộp cuối, nhóm phải đối chiếu mọi số trong Word/slide với CSV và hoàn tất kiểm tra chéo giữa các thành viên.
 
 # Phụ lục
 
 ## Cách tái lập
 
-Chạy từ thư mục gốc theo thứ tự:
+Từ project root, chạy một lệnh:
 
 ```r
-source("R/01_data_cleaning.R")
-source("R/02_visualization.R")
-source("R/03_stationarity_arima_ets.R")
-source("R/04_garch_volatility.R")
-source("R/05_model_comparison.R")
-rmarkdown::render("report/report.Rmd", knit_root_dir = normalizePath("."))
+source("R/run_all.R")
 ```
 
-Các package chính gồm `tidyverse`, `forecast`, `tseries`, `FinTS`, `rugarch`, `knitr`, `rmarkdown` và `openxlsx`.
+Entry point kiểm tra package, chạy script 01-06, ghi `output/pipeline_log.txt`, rồi render báo cáo và khung slide Word. Các package chính gồm `tidyverse`, `forecast`, `tseries`, `FinTS`, `rugarch`, `openxlsx`, `knitr` và `rmarkdown`.
 
 ## Quy tắc diễn giải kiểm định
 
-- P-value nhỏ hơn 0.05: bác bỏ H0 ở mức 5%.
-- P-value lớn hơn hoặc bằng 0.05: chưa đủ bằng chứng bác bỏ H0.
-- P-value lớn không chứng minh model đúng hoàn toàn.
-- AIC/BIC chỉ so sánh model fit trên cùng response và sample.
+- P-value nhỏ hơn 0,05: bác bỏ H0 ở mức 5%.
+- P-value lớn hơn hoặc bằng 0,05: chưa đủ bằng chứng bác bỏ H0.
+- P-value lớn không chứng minh H0 đúng hoặc model hoàn hảo.
+- AIC/BIC chỉ so sánh các model dùng cùng response và sample.
+- Metric holdout/CV đánh giá ngoài mẫu; AIC/BIC đánh giá relative in-sample fit.
 
 # Đóng góp thành viên
 
 | Thành viên | Tỷ lệ | Phạm vi đóng góp | Artifact chính |
 |---|---:|---|---|
-| Trần Thiên Lực (24133037) | 30% | Thu thập, làm sạch, quality checks và trực quan hóa | Notebook, `R/01`, `R/02`, dữ liệu và EDA |
-| Nguyễn Đức Học (24162039) | 35% | Forecast framework, benchmark, rolling CV và residual diagnostics | `R/03`, bảng/hình forecast |
-| Lê Đặng Hoàng Anh (24162006) | 35% | GARCH variants, diagnostics, model comparison và tích hợp báo cáo | `R/04`, `R/05`, báo cáo Word và khung slide |
-
-Phạm vi trên được đối chiếu theo các module và artifact trong repository.
+| Trần Thiên Lực (24133037) | 30% | Nguồn dữ liệu, cleaning, quality checks và EDA | Notebook, `R/01`, `R/02`, dữ liệu và hình EDA |
+| Nguyễn Đức Học (24162039) | 35% | ADF, forecast framework, benchmark, rolling CV và diagnostics | `R/03`, bảng/hình forecast |
+| Lê Đặng Hoàng Anh (24162006) | 35% | GARCH variants, diagnostics, comparison và tích hợp báo cáo | `R/04`-`R/06`, Word và khung slide |
 
 # Tài liệu tham khảo
 
 1. Hyndman, R. J., & Athanasopoulos, G. (2021). *Forecasting: Principles and Practice* (3rd ed.). OTexts.
 2. Tsay, R. S. (2010). *Analysis of Financial Time Series* (3rd ed.). Wiley.
-3. Engle, R. F. (1982). Autoregressive conditional heteroscedasticity with estimates of the variance of United Kingdom inflation. *Econometrica*, 50(4), 987–1007.
-4. Bollerslev, T. (1986). Generalized autoregressive conditional heteroskedasticity. *Journal of Econometrics*, 31(3), 307–327.
-5. Nelson, D. B. (1991). Conditional heteroskedasticity in asset returns: A new approach. *Econometrica*, 59(2), 347–370.
-6. Glosten, L. R., Jagannathan, R., & Runkle, D. E. (1993). On the relation between the expected value and volatility of the nominal excess return on stocks. *Journal of Finance*, 48(5), 1779–1801.
+3. Engle, R. F. (1982). Autoregressive conditional heteroscedasticity with estimates of the variance of United Kingdom inflation. *Econometrica*, 50(4), 987-1007.
+4. Bollerslev, T. (1986). Generalized autoregressive conditional heteroskedasticity. *Journal of Econometrics*, 31(3), 307-327.
+5. Nelson, D. B. (1991). Conditional heteroskedasticity in asset returns: A new approach. *Econometrica*, 59(2), 347-370.
+6. Glosten, L. R., Jagannathan, R., & Runkle, D. E. (1993). On the relation between expected value and volatility of nominal excess returns. *Journal of Finance*, 48(5), 1779-1801.
 7. Ghalanos, A. *rugarch: Univariate GARCH Models*. R package documentation.
+8. Yahoo Finance. Historical data for `FPT.VN`, accessed through the reproducible notebook in this repository.
 
 # Peer assessment
 
-| Thành viên | Điểm mạnh quan sát được | Hạn chế/công việc cần xác nhận | Mức hoàn thành hiện tại |
+| Thành viên | Phần hoàn thành | Hạn chế cần hiểu khi bảo vệ | Trạng thái |
 |---|---|---|---|
-| Trần Thiên Lực (24133037) | Xây dựng nguồn dữ liệu, cleaning và EDA | Duy trì notebook và quality checks tái lập | Hoàn thành |
-| Nguyễn Đức Học (24162039) | Bổ sung benchmark, CV và forecast diagnostics | ARIMAX/SARIMA chưa có cùng rolling-CV coverage | Hoàn thành phần forecast |
-| Lê Đặng Hoàng Anh (24162006) | Bổ sung bốn GARCH, diagnostics và báo cáo tái lập | Volatility chưa được backtest ngoài mẫu | Hoàn thành phần GARCH và tích hợp |
-
-Ba thành viên cần xác nhận nội dung peer assessment này trước khi nộp bản chính thức.
+| Trần Thiên Lực | Data handoff, cleaning và 9 hình EDA | Yahoo Finance có thể điều chỉnh lịch sử | Hoàn thành |
+| Nguyễn Đức Học | Bảy holdout models, CV và diagnostics | ARIMAX/SARIMA chưa có cùng CV coverage; residual chưa white noise | Hoàn thành |
+| Lê Đặng Hoàng Anh | Bốn GARCH, diagnostics và báo cáo | Chưa có volatility backtest ngoài mẫu; GOF còn bị bác bỏ | Hoàn thành |

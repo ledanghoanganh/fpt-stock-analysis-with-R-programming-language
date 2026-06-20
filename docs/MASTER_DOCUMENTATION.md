@@ -3,7 +3,7 @@
 ## Phân tích và dự báo cổ phiếu FPT bằng R
 
 **Môn học:** Lập trình R cho phân tích  
-**Nhóm:** 01  
+**Nhóm:** 06
 **Giảng viên:** TS. Phan Thị Thể
 
 | Thành viên | MSSV | Tỷ lệ | Vai trò chính |
@@ -2213,7 +2213,7 @@ Rubric đánh giá sử dụng hợp lý, không chỉ số lượng tên model.
 ## 27.2 Báo cáo
 
 - [ ] Tên ba thành viên và MSSV đúng.
-- [ ] Môn “Lập trình R cho phân tích”, Nhóm 01.
+- [ ] Môn “Lập trình R cho phân tích”, Nhóm 06.
 - [ ] Giảng viên TS. Phan Thị Thể.
 - [ ] Tỷ lệ 30%/35%/35% tổng bằng 100%.
 - [ ] Word mở được, mục lục/bảng/hình không vỡ.

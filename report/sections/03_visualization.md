@@ -1,21 +1,58 @@
-# Trực quan hóa dữ liệu
+# Phân tích khám phá và trực quan hóa
 
-Phần trực quan hóa được thực hiện sau khi dữ liệu đã được làm sạch. Các hình được tạo bằng `R/02_visualization.R` và lưu trong thư mục `output/figures`.
+## Giá và khối lượng
 
-Hình `close_price.png` thể hiện giá đóng cửa đã điều chỉnh của cổ phiếu FPT trong giai đoạn từ 2015-01-05 đến 2026-06-08. Biểu đồ cho thấy xu hướng biến động dài hạn của giá, nhưng không dùng riêng biểu đồ này để kết luận về khả năng sinh lời hay đưa ra khuyến nghị đầu tư.
+```{r price-figure, fig.cap="Giá đóng cửa điều chỉnh của FPT"}
+include_required_figure("output/figures/close_price.png")
+```
 
-Hình `volume.png` thể hiện khối lượng giao dịch theo thời gian. Biểu đồ giúp quan sát sự thay đổi về mức độ giao dịch giữa các giai đoạn. Tuy nhiên, biểu đồ này chỉ có ý nghĩa mô tả và không đủ để giải thích nguyên nhân kinh tế nếu không có nguồn bổ sung.
+Giá thay đổi rõ về level và có xu hướng dài hạn; biểu đồ gợi ý non-stationarity nhưng không thay thế ADF. Không thể suy ra nguyên nhân kinh tế hoặc xu hướng tương lai chỉ từ đường giá.
 
-Hình `returns.png` thể hiện lợi suất log hằng ngày. Các giá trị dao động quanh mức 0 và có những giai đoạn biên độ dao động lớn hơn. Quan sát này gợi ý khả năng phương sai thay đổi theo thời gian, nhưng cần kiểm định và mô hình hóa ở các phần sau.
+```{r volume-figure, fig.cap="Khối lượng giao dịch FPT theo thời gian"}
+include_required_figure("output/figures/volume.png")
+```
 
-Hình `return_distribution.png` trình bày histogram của lợi suất log, kèm đường mật độ thực nghiệm và đường phân phối chuẩn có cùng trung bình và độ lệch chuẩn. Nếu phân phối thực nghiệm lệch khỏi đường chuẩn, điều này gợi ý lợi suất có thể không tuân theo phân phối chuẩn hoàn toàn.
+Volume phân tán mạnh và có các quan sát cực lớn. Hình được dùng mô tả thanh khoản, không chứng minh một sự kiện hay quan hệ nhân quả nếu chưa có nguồn độc lập.
 
-Hình `qqplot_return.png` là QQ-plot của lợi suất log so với phân phối chuẩn. Nếu các điểm lệch khỏi đường thẳng ở hai đuôi, điều này gợi ý khả năng tồn tại đuôi dày. Đây là cơ sở thăm dò để cân nhắc phân phối Student-t trong mô hình biến động, nhưng chưa phải kết luận cuối cùng.
+## Log return và volatility clustering
 
-Hình `acf_return.png` và `pacf_return.png` thể hiện tự tương quan và tự tương quan riêng phần của lợi suất log. Hai biểu đồ này được dùng để quan sát cấu trúc phụ thuộc tuyến tính trong chuỗi lợi suất, hỗ trợ bước lựa chọn mô hình chuỗi thời gian ở phần sau.
+```{r return-figure, fig.cap="Log return hằng ngày của FPT"}
+include_required_figure("output/figures/returns.png")
+```
 
-Hình `squared_returns.png` thể hiện bình phương lợi suất log. Biểu đồ này giúp quan sát các cụm biến động lớn. Nếu các cụm này xuất hiện, đó là dấu hiệu thăm dò của hiện tượng volatility clustering.
+Return dao động quanh 0 nhưng biên độ không ổn định: giai đoạn biến động lớn thường xuất hiện gần nhau. Đây là dấu hiệu thăm dò của volatility clustering; ARCH-LM ở phần GARCH kiểm định chính thức cấu trúc phương sai.
 
-Hình `return_by_weekday.png` so sánh phân phối lợi suất theo ngày trong tuần. Biểu đồ này chỉ dùng để quan sát sơ bộ. Nếu khác biệt giữa các ngày không rõ ràng, không nên kết luận có yếu tố mùa vụ theo ngày trong tuần.
+```{r squared-return-figure, fig.cap="Bình phương log return và các cụm biến động"}
+include_required_figure("output/figures/squared_returns.png")
+```
 
-Nhìn chung, các biểu đồ trong phần này cho thấy dữ liệu lợi suất cần được xem xét cẩn thận bằng các kiểm định và mô hình ở các phần tiếp theo, đặc biệt là kiểm định tính dừng, tự tương quan và mô hình hóa phương sai thay đổi.
+Squared return loại dấu và giữ độ lớn shock. Các spike theo cụm củng cố động cơ dùng conditional variance model thay vì một variance cố định cho toàn sample.
+
+## Hình dạng phân phối
+
+```{r distribution-figure, fig.cap="Phân phối thực nghiệm của log return so với Normal"}
+include_required_figure("output/figures/return_distribution.png")
+```
+
+Mật độ thực nghiệm lệch khỏi Normal cùng mean/SD, đặc biệt ở phần đuôi. Vì vậy dự án so sánh Normal với standardized Student-t trong GARCH.
+
+```{r qq-figure, fig.cap="Q-Q plot của log return so với Normal"}
+include_required_figure("output/figures/qqplot_return.png")
+```
+
+Các điểm lệch đường tham chiếu ở hai đuôi gợi ý heavy tails. Q-Q plot chỉ là chẩn đoán trực quan; adjusted Pearson GOF sau GARCH mới kiểm tra distribution fit định lượng.
+
+## Tự tương quan và yếu tố lịch
+
+```{r acf-pacf-figures, fig.show='hold', out.width='48%', fig.cap="ACF (trái) và PACF (phải) của log return"}
+include_required_figure("output/figures/acf_return.png")
+include_required_figure("output/figures/pacf_return.png")
+```
+
+ACF/PACF return quan sát dependence tuyến tính theo lag, không chứng minh quan hệ nhân quả. ACF return nhỏ không loại trừ dependence trong squared return hoặc conditional variance.
+
+```{r weekday-figure, fig.cap="Phân phối log return theo ngày trong tuần"}
+include_required_figure("output/figures/return_by_weekday.png")
+```
+
+Boxplot weekday chỉ là bằng chứng thăm dò. Dự án không tuyên bố weekday effect vì chưa có kiểm định chuyên biệt và điều chỉnh multiple testing. SARIMA chu kỳ 5 được xem là một specification thử nghiệm, không phải bằng chứng mùa vụ đã được xác nhận.
