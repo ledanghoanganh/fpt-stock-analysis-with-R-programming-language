@@ -1,277 +1,280 @@
-# 📈 Phân Tích & Dự Báo Cổ Phiếu FPT Bằng Mô Hình Chuỗi Thời Gian
+# Phân tích và dự báo cổ phiếu FPT bằng R
 
-> **Môn học:** Lập Trình R Cho Phân Tích  
-> **Đề tài:** Dự báo giá và phân tích biến động cổ phiếu FPT bằng các mô hình chuỗi thời gian cơ bản và cải tiến  
-> **Ngôn ngữ:** R | Python (thu thập dữ liệu)
+> **Môn học:** Lập trình R cho phân tích
+>
+> **Bài toán:** Dự báo mức giá và phân tích conditional volatility của cổ phiếu FPT
+>
+> **Công nghệ chính:** R, R Markdown; Python/Google Colab cho bước thu thập dữ liệu
 
----
+## Tổng quan
 
-## 1. Giới Thiệu
+Dự án triển khai một quy trình phân tích chuỗi thời gian có thể tái lập:
 
-Dự án thực hiện phân tích toàn diện cổ phiếu **FPT** (sàn HOSE) bằng phương pháp chuỗi thời gian, bao gồm:
+1. Thu thập và kiểm tra dữ liệu OHLCV của FPT.
+2. Làm sạch, tạo `log_close` và log return.
+3. Trực quan hóa mức giá, volume và return.
+4. Kiểm định tính dừng bằng ADF.
+5. So sánh benchmark và các mô hình dự báo giá.
+6. Kiểm tra ARCH effect và so sánh các biến thể GARCH.
+7. Kiểm tra residual, stability, distribution fit và tổng hợp báo cáo Word.
 
-- **Thu thập dữ liệu** lịch sử giá cổ phiếu FPT bằng thư viện `vnstock` (Python/Colab)
-- **Làm sạch & trực quan hóa** dữ liệu trong R
-- **Kiểm định tính dừng** bằng ADF test, log transform và differencing
-- **Dự báo giá** bằng các mô hình ARIMA, ETS và các phiên bản cải tiến
-- **Phân tích biến động (volatility)** bằng GARCH và các phiên bản cải tiến
-- **So sánh & đánh giá** toàn bộ mô hình, tổng hợp báo cáo Word
+Dự án tách hai câu hỏi khác nhau:
 
----
+- **Dự báo mức giá:** đánh giá bằng RMSE, MAE, MAPE và rolling-origin cross-validation.
+- **Mô hình hóa volatility:** đánh giá bằng convergence, likelihood, AIC/BIC, persistence và residual diagnostics.
 
-## 2. Dữ Liệu
+Hai nhóm model không được xếp hạng chung vì chúng giải quyết hai response và dùng các metric khác nhau.
 
-| Thông tin | Chi tiết |
+## Trạng thái hiện tại
+
+Snapshot hiện tại đã có:
+
+- Benchmark Naive và Drift.
+- ARIMA, SARIMA, ARIMAX với biến trễ, ETS và ETS Damped.
+- sGARCH-Normal, sGARCH-Student-t, eGARCH-Student-t và GJR-GARCH-Student-t.
+- Holdout 30 phiên, rolling-origin CV cho nhóm model đã triển khai và forecast residual diagnostics.
+- ARCH-LM, Ljung-Box, sign-bias, Nyblom stability và adjusted Pearson GOF cho GARCH.
+- Hai bảng so sánh độc lập cho forecast-price và volatility.
+- Báo cáo R Markdown đủ cấu trúc rubric và file Word đã render.
+
+### Việc phải khóa trước bản nộp cuối
+
+- Xác nhận duy nhất một nguồn dữ liệu giữa notebook, tài liệu Data và README.
+- Xử lý hoặc giải thích các dòng `volume = 0`; dữ liệu hiện tại còn 173 dòng như vậy.
+- Chạy lại toàn bộ pipeline sau khi Người 1 phát hành data handoff cuối.
+- Đối chiếu lại mọi số trong Word và slide với CSV mới nhất.
+- Điền tên thật, mã sinh viên, contributions và peer assessment đã thống nhất.
+
+Do các điểm trên, kết quả định lượng dưới đây được xem là **provisional**.
+
+## Dữ liệu
+
+| Thuộc tính | Giá trị hiện tại |
 |---|---|
-| Mã cổ phiếu | **FPT** |
-| Sàn giao dịch | HOSE |
-| Nguồn dữ liệu | Thư viện `vnstock` (Python) |
-| Giai đoạn | 01/01/2015 — 08/06/2026 |
-| Số quan sát | 2960 ngày giao dịch |
-| Biến chính | `close` (giá đóng cửa), `log_close`, `return` (lợi suất log) |
+| Mã cổ phiếu | FPT, HOSE |
+| Khoảng thời gian | 2015-01-01 đến 2026-06-08 |
+| Số quan sát | 2,960 dòng |
+| Số log return hợp lệ | 2,959 |
+| File raw | `data/raw/FPT_stock_data.csv` |
+| File model input | `data/processed/fpt_clean.csv` |
 
-### Các biến trong dữ liệu sạch (`fpt_clean.csv`)
+Tệp sạch hiện có các cột:
 
-| Cột | Kiểu | Ý nghĩa |
+| Cột | Ý nghĩa |
+|---|---|
+| `date` | Ngày quan sát |
+| `open`, `high`, `low`, `close` | Dữ liệu giá OHLC |
+| `volume` | Khối lượng giao dịch |
+| `time` | Cột ngày tương thích với visualization cũ |
+| `log_close` | `log(close)` |
+| `return` | `log(close_t) - log(close_(t-1))` |
+
+Mục tiêu sau data handoff là bỏ cột tương thích `time` và thống nhất schema tám cột được mô tả trong [`docs/guide_nguoi_1.md`](docs/guide_nguoi_1.md).
+
+### Lưu ý về provenance
+
+Dữ liệu hiện tại có cấu trúc và giá điều chỉnh tương ứng với lịch sử `FPT.VN` được mô tả trong phần Data của báo cáo. Notebook cũ trong repository từng dùng API TCBS và chưa tái tạo đúng toàn bộ giai đoạn hiện tại. Vì vậy provenance chỉ được xem là hoàn tất sau khi notebook mới, raw CSV và tài liệu cùng chỉ ra một nguồn duy nhất.
+
+## Hệ thống mô hình
+
+### Dự báo giá
+
+| Model | Vai trò |
+|---|---|
+| Naive | Random-walk benchmark |
+| Drift | Random walk có độ trôi |
+| ARIMA | Mô hình AR-I-MA tự động |
+| SARIMA | Kiểm tra thành phần mùa vụ |
+| ETS | Exponential smoothing state-space |
+| ETS Damped | ETS với damped trend |
+| ARIMAX (Lagged) | ARIMA với biến giải thích trễ |
+
+Các model được đánh giá trên holdout 30 phiên. Rolling-origin CV hiện có cho Naive, Drift, ARIMA, ETS và ETS Damped; ARIMAX và SARIMA chưa có cùng coverage CV nên chưa thể tuyên bố một winner tuyệt đối.
+
+### Conditional volatility
+
+| Model | Distribution | Mục tiêu |
 |---|---|---|
-| `date` | Date | Ngày giao dịch |
-| `open` | Numeric | Giá mở cửa |
-| `high` | Numeric | Giá cao nhất trong ngày |
-| `low` | Numeric | Giá thấp nhất trong ngày |
-| `close` | Numeric | Giá đóng cửa |
-| `volume` | Numeric | Khối lượng giao dịch |
-| `log_close` | Numeric | ln(close) |
-| `return` | Numeric | log_close(t) − log_close(t−1) |
+| sGARCH(1,1) | Normal | Baseline đối xứng |
+| sGARCH(1,1) | Student-t | Kiểm tra heavy tails |
+| eGARCH(1,1) | Student-t | Log variance và asymmetry |
+| GJR-GARCH(1,1) | Student-t | Indicator cho shock âm |
 
----
+Tất cả specification dùng cùng chuỗi return và mean equation ARMA(0,0).
 
-## 3. Hệ Thống Mô Hình
+## Kết quả provisional
 
-Dự án sử dụng **8 mô hình** chia thành 2 nhóm: dự báo giá và phân tích volatility.
+### ADF
 
-### 3.1. Nhóm Dự Báo Giá (ARIMA & ETS)
+| Chuỗi | ADF statistic | p-value | Kết luận ở mức 5% |
+|---|---:|---:|---|
+| `close` | -1.7312 | 0.6921 | Chưa đủ bằng chứng bác bỏ unit root |
+| `log_close` | -1.2655 | 0.8893 | Chưa đủ bằng chứng bác bỏ unit root |
+| `return` | -13.8526 | <= 0.01 | Bác bỏ unit root; return dừng |
 
-| # | Mô hình | Loại | Mô tả |
-|---|---|---|---|
-| 1 | **ARIMA(p,d,q)** | Base | Mô hình tự hồi quy tích hợp trung bình trượt. Kết quả: ARIMA(3,1,2) |
-| 2 | **SARIMA(p,d,q)(P,D,Q)[5]** | Cải tiến | ARIMA mùa vụ — kiểm tra hiệu ứng chu kỳ tuần (m=5 ngày giao dịch/tuần) |
-| 3 | **ARIMA + XREG** | Cải tiến | ARIMA với biến ngoại sinh (volume, daily_range) để tăng khả năng giải thích |
-| 4 | **ETS(M,A,N)** | Base | San bằng mũ — Multiplicative Error, Additive Trend, No Seasonality |
-| 5 | **ETS Damped (M,Ad,N)** | Cải tiến | ETS với xu hướng tắt dần — thực tế hơn cho dự báo dài hạn |
+### Forecast-price
 
-### 3.2. Nhóm Phân Tích Volatility (GARCH)
+- **Holdout leader:** ARIMAX (Lagged), RMSE `1,863.36`, MAE `1,501.17`, MAPE `2.05%`.
+- **Rolling-CV leader trong nhóm đã chạy CV:** ETS Damped, mean RMSE `4,726.67`.
+- ETS Damped không thắng Naive trên holdout và residual Ljung-Box chưa đạt mức 5%.
+- ARIMAX chưa có rolling CV trong output hiện tại.
 
-| # | Mô hình | Loại | Mô tả |
-|---|---|---|---|
-| 6 | **GARCH(1,1)** | Base | Mô hình phương sai có điều kiện — phân tích biến động theo thời gian |
-| 7 | **eGARCH(1,1)** | Cải tiến | Exponential GARCH — nắm bắt leverage effect (tin xấu gây biến động mạnh hơn) |
-| 8 | **GJR-GARCH(1,1)** | Cải tiến | Asymmetric GARCH — kiểm tra tác động bất đối xứng của cú sốc dương/âm |
+Kết luận: holdout, rolling CV và residual diagnostics chưa xác định một model thắng nhất quán.
 
-### 3.3. Metrics Đánh Giá
+Xem [`output/tables/price_forecast_comparison.csv`](output/tables/price_forecast_comparison.csv).
 
-| Metric | Áp dụng cho | Ý nghĩa |
-|---|---|---|
-| RMSE | ARIMA, ETS | Căn phương sai sai số trung bình — nhỏ hơn = tốt hơn |
-| MAPE | ARIMA, ETS | Sai số phần trăm tuyệt đối trung bình — nhỏ hơn = tốt hơn |
-| AIC / BIC | Tất cả mô hình | Tiêu chuẩn thông tin — nhỏ hơn = mô hình phù hợp hơn |
+### Volatility
 
----
+| Model | AIC | Persistence | Core diagnostics | Nyblom joint 5% |
+|---|---:|---:|---|---|
+| GJR-GARCH Student-t | -5.719414 | 0.999000 | Đạt | Không đạt |
+| eGARCH Student-t | -5.719354 | 0.959118 | Đạt | Đạt |
+| sGARCH Student-t | -5.715306 | 0.999000 | Đạt | Không đạt |
+| sGARCH Normal | -5.558932 | 0.969402 | Đạt | Không đạt |
 
-## 4. Kết Quả Sơ Bộ (Mô Hình Base)
+eGARCH-Student-t là **provisional candidate** vì có AIC gần như ngang GJR, core residual diagnostics đạt và Nyblom joint stability đạt. Adjusted Pearson GOF vẫn bác bỏ distribution fit cho tất cả model, nên đây chưa phải kết luận cuối.
 
-### 4.1. Kiểm Định Tính Dừng (ADF Test)
+Xem [`output/tables/volatility_model_comparison.csv`](output/tables/volatility_model_comparison.csv).
 
-| Chuỗi | ADF Statistic | p-value | Kết luận |
-|---|---|---|---|
-| Giá đóng cửa (`close`) | −1.73 | 0.6921 | Không dừng |
-| Log giá đóng cửa (`log_close`) | −1.27 | 0.8893 | Không dừng |
-| Lợi suất log (`return`) | −13.85 | < 0.01 | **Dừng** ✅ |
+## Cấu trúc repository
 
-→ Chuỗi giá gốc chứa xu hướng ngẫu nhiên (random walk). Sau khi lấy sai phân bậc 1, chuỗi return dừng hoàn toàn.
-
-### 4.2. Kết Quả Dự Báo (Tập Test = 30 Ngày Cuối)
-
-| Mô hình | RMSE (VNĐ) | MAPE (%) |
-|---|---|---|
-| **ARIMA(3,1,2)** | **2016.99** | **2.19%** |
-| ETS(M,A,N) | 2099.80 | 2.29% |
-
-→ Cả hai mô hình base đều có MAPE < 5% (rất tốt). ARIMA(3,1,2) vượt trội hơn nhẹ.
-
-### 4.3. Kết Quả GARCH & Mô Hình Cải Tiến
-
-> ⏳ *Đang được hoàn thiện — sẽ cập nhật sau khi chạy xong toàn bộ mô hình cải tiến.*
-
----
-
-## 5. Cấu Trúc Dự Án
-
-```
-fpt-stock-analysis-with-R-programming-language/
-│
-├── README.md                          ← File này
-├── .gitignore
+```text
+.
+├── README.md
 ├── FPT_Stock_TimeSeries.Rproj
-│
 ├── data/
-│   ├── raw/
-│   │   └── FPT_stock_data.csv         ← Dữ liệu gốc từ vnstock
-│   ├── processed/
-│   │   └── fpt_clean.csv              ← Dữ liệu sạch (đầu vào chính)
+│   ├── raw/FPT_stock_data.csv
+│   ├── processed/fpt_clean.csv
 │   └── README_data.md
-│
 ├── notebooks/
-│   └── 01_scrape_fpt_colab.ipynb      ← Notebook thu thập dữ liệu
-│
+│   └── 01_scrape_fpt_colab.ipynb
 ├── R/
-│   ├── 00_config.R                    ← Cấu hình chung (thư viện, đường dẫn)
-│   ├── 01_data_cleaning.R             ← Làm sạch dữ liệu
-│   ├── 02_visualization.R             ← Trực quan hóa & thống kê mô tả
-│   ├── 03_stationarity_arima_ets.R    ← Kiểm định dừng + ARIMA/ETS (+ cải tiến)
-│   ├── 04_garch_volatility.R          ← GARCH + eGARCH + GJR-GARCH
-│   ├── 05_model_comparison.R          ← So sánh tổng hợp mô hình
-│   └── 06_export_report_tables.R      ← Xuất bảng/hình cho báo cáo
-│
+│   ├── 00_config.R
+│   ├── 01_data_cleaning.R
+│   ├── 02_visualization.R
+│   ├── 03_stationarity_arima_ets.R
+│   ├── 04_garch_volatility.R
+│   ├── 05_model_comparison.R
+│   └── 06_export_report_tables.R
 ├── output/
-│   ├── figures/                       ← Biểu đồ xuất ra (PNG, 300 DPI)
-│   ├── tables/                        ← Bảng kết quả (CSV)
-│   └── models/                        ← Mô hình đã train (RDS)
-│
+│   ├── figures/
+│   ├── models/
+│   └── tables/
 ├── report/
-│   ├── report.Rmd                     ← File nguồn báo cáo
-│   ├── report.docx                    ← Báo cáo Word cuối cùng
-│   └── sections/                      ← Các phần báo cáo riêng lẻ
-│
+│   ├── report.Rmd
+│   ├── report.docx
+│   └── sections/                 # Tài liệu cũ/tham khảo; report chính là report.Rmd
 └── docs/
-    ├── guide.md                       ← Hướng dẫn chi tiết cho nhóm
-    ├── README_old_task.md             ← README phân công phiên bản cũ
-    ├── phan_cong_mo_hinh_cai_tien.md  ← Phân công mô hình cải tiến
-    └── ly_thuyet_project.md           ← Tài liệu lý thuyết toàn bộ project
+    ├── guide.md
+    ├── guide_nguoi_1.md
+    ├── ke_hoach_nguoi_2_3_hom_nay.md
+    ├── ly_thuyet_project.md
+    ├── phan_cong_mo_hinh_cai_tien.md
+    └── rubric/
 ```
 
----
+`local_docs/` được `.gitignore` và chỉ dùng cho ghi chú/script học tập cá nhân.
 
-## 6. Phân Công Nhóm
+## Cài đặt
 
-| Thành viên | Vai trò | Công việc chính |
-|---|---|---|
-| **Người 1** | Data + Visualization | Thu thập, làm sạch, thống kê mô tả, trực quan hóa dữ liệu |
-| **Người 2** | ARIMA + ETS | Kiểm định dừng, ARIMA, SARIMA, ARIMA+XREG, ETS, ETS Damped |
-| **Người 3** | GARCH + Report | GARCH, eGARCH, GJR-GARCH, so sánh mô hình, tổng hợp báo cáo |
-
-> Chi tiết phân công: xem [`docs/phan_cong_mo_hinh_cai_tien.md`](docs/phan_cong_mo_hinh_cai_tien.md)  
-> Lý thuyết nền tảng: xem [`docs/ly_thuyet_project.md`](docs/ly_thuyet_project.md)
-
----
-
-## 7. Cách Chạy Project
-
-### 7.1. Yêu Cầu Môi Trường
-
-- **R** ≥ 4.3.0 (khuyến nghị 4.6.0)
-- **RStudio** hoặc VS Code + R extension
-- **Python / Google Colab** (cho bước thu thập dữ liệu)
-
-### 7.2. Cài Đặt Gói R
+Khuyến nghị dùng R 4.6.0 và RStudio trên Windows 11. Cài dependency một lần trong R Console:
 
 ```r
 install.packages(c(
-  "tidyverse", "lubridate", "forecast", "tseries",
-  "rugarch", "urca", "scales", "extrafont",
-  "knitr", "rmarkdown"
+  "tidyverse",
+  "lubridate",
+  "forecast",
+  "tseries",
+  "urca",
+  "FinTS",
+  "rugarch",
+  "scales",
+  "knitr",
+  "rmarkdown",
+  "openxlsx"
 ))
 ```
 
-### 7.3. Thứ Tự Chạy
+Nên cài dependency trước khi chạy. `R/06_export_report_tables.R` hiện vẫn có fallback cài `openxlsx` nếu thiếu; các module còn lại sẽ dừng và báo package cần bổ sung.
+
+## Cách chạy
+
+Mở `FPT_Stock_TimeSeries.Rproj`, bảo đảm working directory là thư mục gốc rồi chạy:
 
 ```r
-# Bước 1: Chạy notebook Python (notebooks/01_scrape_fpt_colab.ipynb)
-# → Tạo data/raw/FPT_stock_data.csv
-
-# Bước 2: Làm sạch dữ liệu
 source("R/01_data_cleaning.R")
-
-# Bước 3: Trực quan hóa
 source("R/02_visualization.R")
-
-# Bước 4: Mô hình ARIMA / ETS (base + cải tiến)
 source("R/03_stationarity_arima_ets.R")
-
-# Bước 5: Mô hình GARCH (base + cải tiến)
 source("R/04_garch_volatility.R")
-
-# Bước 6: So sánh mô hình
 source("R/05_model_comparison.R")
-
-# Bước 7: Xuất báo cáo
-rmarkdown::render("report/report.Rmd", output_format = "word_document")
+source("R/06_export_report_tables.R")
 ```
 
-> ⚠️ **Lưu ý:** Phải chạy theo đúng thứ tự. Nếu thiếu `fpt_clean.csv` thì bước 4-7 sẽ lỗi.
+Render báo cáo:
 
----
+```r
+rmarkdown::render(
+  "report/report.Rmd",
+  output_file = "report.docx",
+  knit_root_dir = normalizePath(".")
+)
+```
 
-## 8. Output Dự Kiến
+Báo cáo chỉ đọc CSV/PNG đã sinh, không chạy lại model trong lúc knit.
 
-### Biểu đồ (`output/figures/`)
+## Output chính
 
-| File | Nội dung |
+### Forecast
+
+| Output | Nội dung |
 |---|---|
-| `close_price_professional.png` | Xu hướng giá đóng cửa FPT |
-| `volume_professional.png` | Khối lượng giao dịch theo thời gian |
-| `returns_professional.png` | Tỷ suất sinh lời hằng ngày |
-| `arima_forecast.png` | Dự báo ARIMA vs thực tế |
-| `ets_forecast.png` | Dự báo ETS vs thực tế |
-| `sarima_forecast.png` | Dự báo SARIMA *(mới)* |
-| `arima_xreg_forecast.png` | Dự báo ARIMA+XREG *(mới)* |
-| `ets_damped_forecast.png` | Dự báo ETS Damped *(mới)* |
-| `garch_volatility.png` | Conditional volatility GARCH |
-| `egarch_volatility.png` | Conditional volatility eGARCH *(mới)* |
-| `gjr_garch_volatility.png` | Conditional volatility GJR-GARCH *(mới)* |
+| `forecast_metrics.csv` | Holdout RMSE/MAE/MAPE |
+| `forecast_cv_metrics_raw.csv` | Metric theo từng rolling fold |
+| `forecast_cv_metrics_summary.csv` | Tổng hợp rolling CV |
+| `forecast_diagnostics.csv` | Ljung-Box forecast residuals |
+| `price_forecast_comparison.csv` | Holdout + CV + diagnostics |
+| `*_forecast.png` | Dự báo từng model |
+| `*_residual_diagnostics.png` | Residual diagnostics từng model |
 
-### Bảng kết quả (`output/tables/`)
+### GARCH
 
-| File | Nội dung |
+| Output | Nội dung |
 |---|---|
-| `data_summary.csv` | Thống kê mô tả |
-| `missing_values.csv` | Báo cáo giá trị thiếu |
-| `stationarity_tests.csv` | Kết quả kiểm định ADF |
-| `forecast_metrics.csv` | RMSE/MAPE cho tất cả mô hình dự báo |
-| `model_aic_bic_comparison.csv` | So sánh AIC/BIC *(mới)* |
-| `garch_summary.csv` | Tham số các mô hình GARCH |
-| `garch_comparison.csv` | So sánh các biến thể GARCH *(mới)* |
-| `model_comparison.csv` | Bảng tổng hợp toàn bộ mô hình |
+| `garch_parameters.csv` | Estimate và robust standard error |
+| `garch_comparison.csv` | Likelihood, AIC/BIC, persistence |
+| `garch_diagnostics.csv` | Bảng dài toàn bộ diagnostic tests |
+| `garch_diagnostic_summary.csv` | Tóm tắt diagnostics theo model |
+| `volatility_model_comparison.csv` | Fit + diagnostics + provisional rule |
+| `garch_model_comparison.png` | Conditional volatility của bốn model |
+| `garch_acf_diagnostics.png` | ACF standardized residuals |
+| `garch_qq_diagnostics.png` | Normal-reference QQ plots |
+| `garch_news_impact.png` | News-impact curves của model bất đối xứng |
 
----
+### Báo cáo
 
-## 9. Cấu Trúc Báo Cáo
+- [`report/report.Rmd`](report/report.Rmd): nguồn báo cáo tái lập, đủ 11 phần rubric.
+- [`report/report.docx`](report/report.docx): Word đã render và nhúng bảng/hình.
+- `output/tables/report_tables.xlsx`: workbook hỗ trợ kiểm tra bảng.
 
-1. Giới thiệu / Introduction
-2. Dữ liệu / Data Description
-3. Trực quan hóa / Data Visualization
-4. Mô hình hóa ARIMA & ETS (base + cải tiến)
-5. Mô hình hóa GARCH (base + cải tiến) & Results Discussion
-6. Kết luận / Conclusion
-7. Tài liệu tham khảo / References
-8. Phụ lục / Appendices
+## Phân công
 
----
+| Vai trò | Phạm vi |
+|---|---|
+| Thành viên 1 | Data provenance, cleaning, quality checks và visualization |
+| Thành viên 2 | Forecast framework, benchmark, rolling CV và residual diagnostics |
+| Thành viên 3 | GARCH variants, diagnostics, model comparison, báo cáo và slide |
 
-## 10. Tài Liệu Tham Khảo
+Tên thật, MSSV và đánh giá đóng góp được hoàn thiện trong báo cáo trước khi nộp.
 
-- Hyndman, R.J. & Athanasopoulos, G. (2021). *Forecasting: Principles and Practice*, 3rd ed.
-- Tsay, R.S. (2010). *Analysis of Financial Time Series*, 3rd ed.
-- Nelson, D.B. (1991). "Conditional Heteroskedasticity in Asset Returns". *Econometrica*.
-- Glosten, L.R., Jagannathan, R. & Runkle, D.E. (1993). *Journal of Finance*.
-- Package `forecast`: https://pkg.robjhyndman.com/forecast/
-- Package `rugarch`: https://cran.r-project.org/web/packages/rugarch/
-- Thư viện `vnstock`: https://github.com/thinh-vu/vnstock
+## Tài liệu dự án
 
----
+- [Rubric và yêu cầu](docs/rubric/)
+- [Hướng dẫn hoàn thành dự án](docs/guide.md)
+- [Hướng dẫn Người 1](docs/guide_nguoi_1.md)
+- [Lý thuyết nền tảng](docs/ly_thuyet_project.md)
+- [Phân công mô hình cải tiến](docs/phan_cong_mo_hinh_cai_tien.md)
+- [README/phân công cũ](docs/README_old_task.md)
 
-## 11. Ghi Chú
+## Giới hạn sử dụng
 
-- README phân công phiên bản cũ được lưu tại [`docs/README_old_task.md`](docs/README_old_task.md)
-- Hướng dẫn thao tác chi tiết: [`docs/guide.md`](docs/guide.md)
-- Tài liệu lý thuyết: [`docs/ly_thuyet_project.md`](docs/ly_thuyet_project.md)
-- Phân công mô hình cải tiến: [`docs/phan_cong_mo_hinh_cai_tien.md`](docs/phan_cong_mo_hinh_cai_tien.md)
+Đây là đồ án học thuật. Kết quả dự báo và volatility không phải khuyến nghị mua, bán, định giá hay quản trị rủi ro thực tế. Mọi kết luận cuối phải dựa trên lần chạy lại sau data handoff và kiểm tra chéo của cả nhóm.
