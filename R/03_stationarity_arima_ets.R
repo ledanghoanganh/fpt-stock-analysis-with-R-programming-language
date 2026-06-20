@@ -85,6 +85,24 @@ diagnose_forecast_model <- function(model, model_name) {
   ))
 }
 
+# 3.8. HÀM KIỂM ĐỊNH TÍNH DỪNG (ADF TEST)
+run_adf_tests <- function(df) {
+  # Bỏ qua NA trong trường hợp df có chứa NA (ví dụ return dòng đầu)
+  price_series <- na.omit(df$close)
+  return_series <- na.omit(df$return)
+  
+  adf_price <- adf.test(price_series, alternative = "stationary")
+  adf_return <- adf.test(return_series, alternative = "stationary")
+  
+  return(data.frame(
+    Series = c("Price (Close)", "Log Return"),
+    ADF_Statistic = c(adf_price$statistic, adf_return$statistic),
+    P_Value = c(adf_price$p.value, adf_return$p.value),
+    Stationary = c(ifelse(adf_price$p.value < 0.05, "Yes (Reject H0)", "No (Fail to reject H0)"),
+                   ifelse(adf_return$p.value < 0.05, "Yes (Reject H0)", "No (Fail to reject H0)"))
+  ))
+}
+
 # 4. HÀM HUẤN LUYỆN VÀ DỰ BÁO TRÊN MỘT LẦN CHIA SPLIT
 forecast_one_split <- function(train_data, test_data) {
   train_ts <- ts(train_data$close, frequency = 1)
@@ -224,6 +242,11 @@ if (sys.nframe() == 0) {
   
   train_data <- df_model[1:n_train, ]
   test_data <- df_model[(n_train + 1):n_total, ]
+  
+  print("0. Kiểm định tính dừng (ADF Test)...")
+  adf_res <- run_adf_tests(df)
+  write.csv(adf_res, file.path(TABLE_DIR, "adf_test_results.csv"), row.names = FALSE)
+  print(paste("Đã xuất", file.path(TABLE_DIR, "adf_test_results.csv")))
   
   print("1. Huấn luyện các mô hình trên Final Split...")
   final_split_results <- forecast_one_split(train_data, test_data)
