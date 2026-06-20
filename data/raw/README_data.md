@@ -61,7 +61,7 @@ Kết quả chính:
 - Không có ngày bị thiếu hoặc lỗi định dạng.
 - Không có giá không dương.
 - Có 173 dòng có `volume = 0`; các dòng này được loại khỏi dữ liệu sạch.
-- Sau khi loại `volume = 0`, có 18 dòng có quan hệ OHLC chưa nhất quán; nhóm chuẩn hóa lại `high` và `low` để bảo đảm dữ liệu sạch không vi phạm quan hệ OHLC.
+- Sau khi loại `volume = 0`, kiểm tra OHLC dùng tolerance `1e-8` để bỏ qua sai số dấu phẩy động. Có 1 dòng bất thường thực sự (`2021-11-02`) được chuẩn hóa để dữ liệu sạch không vi phạm quan hệ OHLC.
 - Dữ liệu sạch cuối cùng có 2,787 dòng.
 
 ## Ghi chú xử lý `volume = 0`

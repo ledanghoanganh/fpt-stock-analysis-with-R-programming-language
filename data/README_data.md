@@ -1,33 +1,53 @@
-# Tổng quan Dữ liệu Cổ phiếu FPT (FPT Stock Data Overview)
+# README du lieu FPT
 
-Thư mục này chứa dữ liệu thô và dữ liệu đã qua làm sạch của cổ phiếu FPT, phục vụ cho quá trình phân tích và mô hình hóa chuỗi thời gian.
+## Nguon va kha nang tai lap
 
-## 1. Thông tin chung (General Information)
-- **Nguồn:** Dữ liệu được thu thập (crawl) thông qua thư viện `vnstock` bằng Python/Colab.
-- **Mã cổ phiếu:** FPT (Công ty Cổ phần FPT - Sàn HOSE).
-- **Giai đoạn:** Từ ngày **01/01/2015** đến ngày **08/06/2026** (hơn 11 năm dữ liệu lịch sử).
-- **Tổng số quan sát:** 2.960 dòng dữ liệu (tương ứng với số phiên giao dịch).
+Du lieu OHLCV duoc tai tu Yahoo Finance voi ma `FPT.VN` bang notebook
+`notebooks/01_scrape_fpt_colab.ipynb`. Notebook dung `auto_adjust = TRUE`, do do
+cac cot gia la gia da dieu chinh. Khoang tai du lieu la tu `2015-01-01` den
+`2026-06-09`; tham so `end` cua Yahoo Finance la moc loai tru, nen quan sat cuoi
+cung la `2026-06-08`.
 
-## 2. Cấu trúc các file dữ liệu
+Notebook xuat file `FPT_stock_data.csv`. Sau khi tai ve, dat file tai:
 
-### 2.1. Dữ liệu thô (`raw/FPT_stock_data.csv`)
-Chứa các cột cơ bản chuẩn từ API:
-- `date`: Ngày giao dịch.
-- `close`: Giá đóng cửa (đã điều chỉnh).
-- `high`: Giá cao nhất trong phiên.
-- `low`: Giá thấp nhất trong phiên.
-- `open`: Giá mở cửa.
-- `volume`: Khối lượng giao dịch.
+`data/raw/FPT_stock_data.csv`
 
-### 2.2. Dữ liệu sạch (`processed/fpt_clean.csv`)
-Được sinh ra tự động sau khi chạy kịch bản `R/01_data_cleaning.R`, kế thừa toàn bộ cột của dữ liệu thô và bổ sung thêm 3 cột phục vụ phân tích:
-- `time`: Định dạng chuẩn hóa Date hỗ trợ cho script vẽ biểu đồ.
-- `log_close`: Logarit tự nhiên của giá đóng cửa ($ln(close)$) giúp làm mượt chuỗi dữ liệu.
-- `return`: Tỷ suất sinh lời log hằng ngày ($log\_close_t - log\_close_{t-1}$), là đầu vào bắt buộc cho mô hình GARCH.
+Sau do chay tu thu muc goc cua du an:
 
-## 3. Những điểm đáng chú ý & Ghi chú phân tích (Important Insights & Notes)
+```r
+source("R/01_data_cleaning.R")
+source("R/02_visualization.R")
+```
 
-1. **Sự tăng trưởng dài hạn ấn tượng:** Dữ liệu cho thấy giá đóng cửa (đã điều chỉnh) khởi điểm ở mức xấp xỉ **7.118 VNĐ** vào đầu năm 2015 và đạt mức trên **76.000 VNĐ** vào đầu tháng 06/2026. Chuỗi giá trị gốc có **xu hướng (trend)** tăng trưởng dài hạn cực kỳ mạnh mẽ, minh chứng rõ ràng cho việc chuỗi là **chuỗi không dừng (Non-stationary)**.
-2. **Khối lượng giao dịch bằng 0:** Một số dòng dữ liệu ở những ngày đầu tiên (như `01/01/2015`, `02/01/2015`) có cột `volume = 0`. Điều này thường đại diện cho các ngày nghỉ lễ (như Tết Dương Lịch) khi thị trường đóng cửa nhưng hệ thống dữ liệu vẫn lưu lại mức giá của ngày liền kề trước đó. Không nên dùng `volume` trực tiếp để tính các chỉ số như VWAP vào những ngày này.
-3. **Giá trị NA bắt buộc (Missing Value):** Vì công thức tính `return` là độ lệch giữa ngày hiện tại và ngày hôm trước, do đó cột `return` của ngày đầu tiên (`01/01/2015`) luôn mang giá trị `NA`. Khi huấn luyện mô hình (ARIMA, GARCH) bắt buộc phải có bước loại bỏ dòng `NA` này (ví dụ: `filter(!is.na(return))`) để mô hình không báo lỗi.
-4. **Tính nhất quán:** Số lượng dòng (lines) của dữ liệu thô và dữ liệu sạch hoàn toàn khớp nhau (đều có 2961 dòng bao gồm header). Dữ liệu không bị khuyết tật (corrupted) và đã sẵn sàng 100% cho các bước phân tích chuỗi thời gian chuyên sâu.
+## Du lieu tho
+
+`data/raw/FPT_stock_data.csv` co 2,960 dong va 6 cot: `date`, `open`, `high`,
+`low`, `close`, `volume`.
+
+## Du lieu sach
+
+`data/processed/fpt_clean.csv` co 2,787 dong, tu `2015-01-05` den
+`2026-06-08`, va 8 cot:
+
+- `date`: ngay giao dich
+- `open`, `high`, `low`, `close`: gia OHLC da dieu chinh
+- `volume`: khoi luong giao dich
+- `log_close`: log tu nhien cua `close`
+- `return`: `log(close_t) - log(close_{t-1})`
+
+`return` cua dong dau tien la `NA` theo dinh nghia sai phan. Khi mo hinh hoa,
+can loai dong nay bang `filter(!is.na(return))`.
+
+## Kiem tra chat luong
+
+Quy trinh tai `R/01_data_cleaning.R`:
+
+- kiem tra schema, ngay trung, gia tri thieu, gia khong duong va volume am;
+- loai 173 dong co `volume = 0`;
+- kiem tra quan he OHLC voi tolerance `1e-8` de bo qua sai so dau phay dong;
+- chuan hoa mot dong bat thuong OHLC thuc su (`2021-11-02`);
+- tao `log_close` va log return.
+
+Ket qua kiem tra duoc ghi tai `output/tables/data_quality_report.csv`. Du lieu
+phu thuoc Yahoo Finance va co the thay doi neu nha cung cap hieu chinh lich su.
+Du lieu va bao cao khong phai khuyen nghi dau tu.

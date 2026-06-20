@@ -26,14 +26,24 @@ df_checked <- df_raw %>%
   ) %>%
   arrange(date)
 
-raw_high_error <- sum(df_checked$high < pmax(df_checked$open, df_checked$close), na.rm = TRUE)
-raw_low_error <- sum(df_checked$low > pmin(df_checked$open, df_checked$close), na.rm = TRUE)
+# Yahoo Finance can contain sub-cent floating-point differences. Only treat an
+# OHLC relation as inconsistent when it exceeds this absolute tolerance.
+ohlc_tolerance <- 1e-8
+high_is_invalid <- function(data) {
+  data$high + ohlc_tolerance < pmax(data$open, data$close)
+}
+low_is_invalid <- function(data) {
+  data$low - ohlc_tolerance > pmin(data$open, data$close)
+}
+
+raw_high_error <- sum(high_is_invalid(df_checked), na.rm = TRUE)
+raw_low_error <- sum(low_is_invalid(df_checked), na.rm = TRUE)
 
 df_nonzero_volume <- df_checked %>%
   filter(volume > 0)
 
-nonzero_high_error <- sum(df_nonzero_volume$high < pmax(df_nonzero_volume$open, df_nonzero_volume$close), na.rm = TRUE)
-nonzero_low_error <- sum(df_nonzero_volume$low > pmin(df_nonzero_volume$open, df_nonzero_volume$close), na.rm = TRUE)
+nonzero_high_error <- sum(high_is_invalid(df_nonzero_volume), na.rm = TRUE)
+nonzero_low_error <- sum(low_is_invalid(df_nonzero_volume), na.rm = TRUE)
 
 quality_report <- tibble::tibble(
   check = c(
@@ -64,8 +74,7 @@ quality_report <- tibble::tibble(
     nonzero_high_error,
     nonzero_low_error,
     sum(
-      df_nonzero_volume$high < pmax(df_nonzero_volume$open, df_nonzero_volume$close) |
-        df_nonzero_volume$low > pmin(df_nonzero_volume$open, df_nonzero_volume$close),
+      high_is_invalid(df_nonzero_volume) | low_is_invalid(df_nonzero_volume),
       na.rm = TRUE
     )
   )
@@ -90,8 +99,16 @@ df_clean <- df_nonzero_volume %>%
   distinct(date, .keep_all = TRUE) %>%
   arrange(date) %>%
   mutate(
-    high = pmax(open, high, low, close),
-    low = pmin(open, high, low, close),
+    high = if_else(
+      high + ohlc_tolerance < pmax(open, close),
+      pmax(open, high, close),
+      high
+    ),
+    low = if_else(
+      low - ohlc_tolerance > pmin(open, close),
+      pmin(open, low, close),
+      low
+    ),
     log_close = log(close),
     return = log_close - lag(log_close)
   )
@@ -105,10 +122,10 @@ if (sum(is.na(df_clean$return)) != 1) {
 if (anyDuplicated(df_clean$date) > 0) {
   stop("Dữ liệu sạch còn ngày trùng.")
 }
-if (any(df_clean$high < pmax(df_clean$open, df_clean$close), na.rm = TRUE)) {
+if (any(high_is_invalid(df_clean), na.rm = TRUE)) {
   stop("Dữ liệu sạch còn lỗi high.")
 }
-if (any(df_clean$low > pmin(df_clean$open, df_clean$close), na.rm = TRUE)) {
+if (any(low_is_invalid(df_clean), na.rm = TRUE)) {
   stop("Dữ liệu sạch còn lỗi low.")
 }
 
