@@ -12,6 +12,7 @@ Thumbs.db
 .positai
 
 # Personal learning notes and local-only helper scripts
+.agents/
 local_docs/
 
 # Regenerated local model bundle; final tables/figures are committed separately
