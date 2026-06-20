@@ -170,7 +170,7 @@ Xem [`output/tables/volatility_model_comparison.csv`](output/tables/volatility_m
 ├── report/
 │   ├── report.Rmd
 │   ├── report.docx
-│   └── sections/                 # Sáu chương được report.Rmd knit trực tiếp
+│   └── sections/                 # Bản chương tham khảo; report.Rmd đã tích hợp đầy đủ
 └── docs/
     ├── guide.md
     ├── guide_nguoi_1.md
