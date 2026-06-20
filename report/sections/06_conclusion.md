@@ -1,18 +1,35 @@
-# 6. Kết luận và Định hướng Phát triển
+# Kết luận, hạn chế và hướng phát triển
 
-## 6.1. Kết luận chung
-Dự án đã hoàn thành toàn diện quy trình phân tích chuỗi thời gian cho cổ phiếu Công ty Cổ phần FPT từ năm 2015 đến năm 2026. Các kết luận chính rút ra từ quá trình nghiên cứu bao gồm:
-1. **Xu hướng tăng trưởng:** FPT là một cổ phiếu có xu hướng tăng trưởng bền vững trong dài hạn, đặc biệt bùng nổ từ sau đại dịch nhờ lợi thế cốt lõi về công nghệ và chuyển đổi số. Chuỗi giá trị mang tính không dừng rõ rệt.
-2. **Khả năng dự báo giá:** Cả hai mô hình ARIMA và ETS đều nắm bắt tốt quỹ đạo tăng trưởng của giá cổ phiếu. Trong đó, mô hình ARIMA có phần nhỉnh hơn với mức sai số rất thấp (MAPE ~ 2.19%), thích hợp để làm kim chỉ nam dự báo trung hạn.
-3. **Đặc tính rủi ro:** Lợi suất cổ phiếu FPT tồn tại hiệu ứng biến động cụm. Mô hình GARCH(1,1) đã chứng minh được tính dai dẳng của biến động ($\beta_1 > 0.9$), giúp hệ thống hóa rủi ro của cổ phiếu trong những giai đoạn thị trường hoảng loạn.
+## Kết luận
 
-## 6.2. Hạn chế của đề tài
-Dù mô hình đạt độ chính xác cao, đề tài vẫn còn tồn đọng một số hạn chế:
-* **Hạn chế về dữ liệu:** Chỉ sử dụng duy nhất dữ liệu lịch sử giá. Trong thực tế, giá cổ phiếu FPT còn chịu tác động rất lớn từ tin tức vĩ mô (lãi suất FED, tỷ giá), chính sách doanh nghiệp, và kết quả kinh doanh hàng quý.
-* **Giới hạn mô hình tuyến tính:** Cả ARIMA và GARCH vẫn là các tiếp cận thống kê truyền thống, có thể gặp khó khăn trong việc bắt đỉnh/đáy (black swan events) nếu thị trường thay đổi cơ cấu đột ngột.
+1. Raw data có `r fmt_number(raw_rows, 0)` dòng; sau khi loại `r zero_volume_removed` hàng volume bằng 0 và chuẩn hóa `r ohlc_repaired` OHLC row, dữ liệu model còn `r fmt_number(n_observations, 0)` dòng và `r fmt_number(n_returns, 0)` log returns.
+2. ADF chưa bác bỏ unit root cho `close` và `log_close`, nhưng bác bỏ unit root cho `return`.
+3. `r best_holdout$model` dẫn holdout theo RMSE nhưng chỉ hơn Naive `r fmt_number(holdout_gain)`; `r best_cv$model` dẫn rolling CV; mọi fitted forecast model còn residual autocorrelation.
+4. Pre-fit ARCH-LM phát hiện ARCH effect. Student-t cải thiện relative fit so với Normal trong GARCH.
+5. GJR có AIC thấp nhất nhưng parameter stability không đạt; eGARCH-Student-t là ứng viên cân bằng nhờ fit gần GJR, core diagnostics và Nyblom stability đạt.
+6. Distribution GOF còn bị bác bỏ cho cả bốn GARCH, nên không có model hoàn hảo.
 
-## 6.3. Hướng phát triển trong tương lai
-Để mở rộng đề tài và nâng cao độ chính xác, nhóm đề xuất các hướng đi sau:
-* Đưa các biến ngoại sinh (Exogenous variables) như VN-Index, lãi suất liên ngân hàng vào mô hình (ARIMAX, GARCH-X).
-* Thử nghiệm các kiến trúc Học máy sâu (Deep Learning) chuyên dụng cho chuỗi thời gian như Long Short-Term Memory (LSTM), GRU hay Time Series Transformer để so sánh với các kỹ thuật thống kê cổ điển.
-* Phân tích sâu hơn bằng Sentiment Analysis (Phân tích cảm xúc) từ các diễn đàn chứng khoán để xem xét yếu tố tâm lý tác động lên thanh khoản.
+Các kết luận trên chỉ áp dụng cho sample, specification và protocol hiện tại. Dự án không chứng minh quan hệ nhân quả, không định giá FPT và không đưa ra khuyến nghị đầu tư.
+
+## Hạn chế
+
+- Chỉ sử dụng lịch sử một cổ phiếu từ một nhà cung cấp.
+- Holdout 30 phiên ngắn; kết quả nhạy với cửa sổ đánh giá.
+- SARIMA và ARIMAX chưa có rolling CV cùng coverage.
+- Tất cả fitted forecast models còn residual autocorrelation.
+- Ba trong bốn GARCH không đạt Nyblom joint stability.
+- Pearson GOF bác bỏ distribution fit ở cả bốn GARCH.
+- Chưa có out-of-sample volatility loss hoặc VaR backtest.
+- Chưa kiểm tra structural breaks một cách chuyên biệt.
+
+## Hướng phát triển
+
+1. Chạy cùng rolling-origin folds cho toàn bộ forecast models.
+2. Bổ sung MASE và prediction-interval coverage.
+3. Dùng rolling/expanding evaluation cho volatility với QLIKE hoặc MSE trên variance proxy.
+4. Thực hiện VaR backtest bằng Kupiec và Christoffersen.
+5. Thử skewed Student-t/GED và kiểm tra distribution fit.
+6. Kiểm tra structural breaks hoặc regime-switching.
+7. Thêm VN-Index, biến vĩ mô hoặc thông tin doanh nghiệp với thiết kế chống leakage.
+
+Ưu tiên của nghiên cứu tiếp theo là đánh giá công bằng và ngoài mẫu, không phải chỉ tăng số lượng model.

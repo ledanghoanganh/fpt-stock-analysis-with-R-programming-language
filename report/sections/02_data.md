@@ -1,23 +1,59 @@
-# Dữ liệu
+# Dữ liệu và kiểm tra chất lượng
 
-Dữ liệu sử dụng trong nghiên cứu là dữ liệu giá cổ phiếu FPT lấy từ Yahoo Finance với mã `FPT.VN`. Giai đoạn dữ liệu được tái lập từ ngày 2015-01-01 đến hết ngày 2026-06-08. File dữ liệu thô được lưu tại `data/raw/FPT_stock_data.csv`.
+## Nguồn và phạm vi
 
-Notebook thu thập dữ liệu sử dụng tùy chọn `auto_adjust = TRUE`, vì vậy cột `close` được xem là giá đóng cửa đã điều chỉnh. Dữ liệu thô gồm 2,960 dòng và 6 biến: `date`, `open`, `high`, `low`, `close`, `volume`.
+Dữ liệu được lấy từ Yahoo Finance với ticker `FPT.VN` bằng `notebooks/01_scrape_fpt_colab.ipynb`. Notebook dùng `auto_adjust = TRUE`, vì vậy các cột giá được hiểu là giá đã điều chỉnh theo dữ liệu của nhà cung cấp. Tệp raw cố định có `r fmt_number(raw_rows, 0)` dòng từ 2015-01-01 đến 2026-06-08 và được lưu tại `data/raw/FPT_stock_data.csv`.
 
-Quy trình làm sạch được thực hiện trong `R/01_data_cleaning.R`. Trước hết, nhóm chuẩn hóa tên cột, chuyển `date` về kiểu ngày và chuyển các biến giá, khối lượng về dạng số. Sau đó, dữ liệu được kiểm tra ngày lỗi, ngày trùng, giá trị thiếu, giá không dương, khối lượng âm và quan hệ OHLC.
+| Biến | Ý nghĩa |
+|---|---|
+| `date` | Ngày quan sát |
+| `open` | Giá mở cửa đã điều chỉnh |
+| `high` | Giá cao nhất đã điều chỉnh |
+| `low` | Giá thấp nhất đã điều chỉnh |
+| `close` | Giá đóng cửa đã điều chỉnh |
+| `volume` | Khối lượng giao dịch |
 
-Kết quả kiểm tra cho thấy dữ liệu thô không có ngày trùng, không có ngày lỗi, không có giá không dương và không có khối lượng âm. Tuy nhiên, dữ liệu có 173 dòng `volume = 0`. Các dòng này được loại khỏi dữ liệu sạch vì không đại diện cho phiên giao dịch hữu ích khi phân tích lợi suất.
+## Quy trình làm sạch
 
-Sau khi loại các dòng `volume = 0`, nhóm ghi nhận 18 dòng có quan hệ OHLC chưa nhất quán. Để dữ liệu sạch không vi phạm kiểm tra OHLC, nhóm chuẩn hóa `high` và `low` sao cho `high` không thấp hơn `open` hoặc `close`, đồng thời `low` không cao hơn `open` hoặc `close`.
+`R/01_data_cleaning.R` chuẩn hóa tên cột, chuyển kiểu Date/numeric, sắp xếp theo thời gian và kiểm tra schema. Pipeline dừng nếu có ngày lỗi, ngày trùng, missing OHLCV, giá không dương hoặc volume âm.
 
-Dữ liệu sạch được lưu tại `data/processed/fpt_clean.csv`, gồm 2,787 dòng trong giai đoạn từ 2015-01-05 đến 2026-06-08. Dữ liệu sạch có 8 biến: `date`, `open`, `high`, `low`, `close`, `volume`, `log_close`, `return`.
+Dữ liệu raw có `r zero_volume_removed` dòng `volume = 0`; các dòng này bị loại vì không đại diện cho phiên có khối lượng giao dịch dương trong chuỗi mô hình. Quan hệ OHLC được kiểm tra với tolerance `1e-8` để không nhầm sai số floating-point khoảng `10^-12` với lỗi thực. Sau tolerance và lọc volume, `r ohlc_repaired` dòng OHLC bất thường thực sự được chuẩn hóa.
 
-Biến `log_close` được tính bằng log tự nhiên của `close`. Biến lợi suất được thống nhất là lợi suất log hằng ngày:
+```{r quality-table}
+quality_for_report <- quality_report %>%
+  filter(check %in% c(
+    "raw_rows", "invalid_date", "duplicate_date", "missing_ohlcv",
+    "non_positive_price", "negative_volume", "zero_volume",
+    "ohlc_rows_repaired_after_volume_filter"
+  ))
+kable(quality_for_report, caption = "Tóm tắt kiểm tra chất lượng dữ liệu")
+```
 
-`return_t = log(close_t) - log(close_{t-1})`
+## Dữ liệu model
 
-Dòng đầu tiên của `return` là `NA` vì không có quan sát trước đó để tính lợi suất. Các dòng còn lại không thiếu giá trị `return`.
+Tệp `data/processed/fpt_clean.csv` có `r fmt_number(n_observations, 0)` dòng từ `r analysis_start` đến `r analysis_end`, gồm tám biến raw/derived. Hai biến được tạo thêm là:
 
-Các bảng kiểm tra và thống kê mô tả được lưu trong thư mục `output/tables`, gồm `data_quality_report.csv`, `missing_values.csv` và `data_summary.csv`.
+\[
+\text{log\_close}_t=\log(P_t), \qquad
+r_t=\log(P_t)-\log(P_{t-1}).
+\]
 
-Một hạn chế của dữ liệu là nguồn Yahoo Finance có thể điều chỉnh dữ liệu lịch sử theo thời gian. Vì vậy, số quan sát có thể thay đổi nhẹ nếu dữ liệu được tải lại ở thời điểm khác.
+Return đầu tiên là `NA` theo định nghĩa vì không có giá phiên trước; còn lại có `r fmt_number(n_returns, 0)` log returns hợp lệ. Dữ liệu sạch không còn volume bằng 0.
+
+```{r missing-table}
+kable(
+  missing_values %>% filter(variable %in% names(clean_data)),
+  caption = "Giá trị thiếu trong tám biến của dữ liệu model",
+  digits = 4
+)
+```
+
+```{r descriptive-table}
+kable(data_summary, caption = "Thống kê mô tả dữ liệu sạch", digits = 4)
+```
+
+Mean return lịch sử xấp xỉ `r fmt_number(100 * return_summary$mean, 4)`% mỗi phiên và standard deviation xấp xỉ `r fmt_number(100 * return_summary$sd, 3)`%. Đây là mô tả sample, không phải lợi suất hoặc rủi ro đảm bảo trong tương lai. Volume có mean lớn hơn median do phân phối lệch và các quan sát rất lớn.
+
+## Hạn chế dữ liệu
+
+Yahoo Finance có thể hiệu chỉnh dữ liệu lịch sử. Vì vậy dự án dùng fixed raw CSV để tái lập đúng sample; nếu tải lại dữ liệu, nhóm phải rerun toàn pipeline và không được trộn output cũ với input mới. Chuỗi chỉ gồm một cổ phiếu và chưa có market index hoặc biến vĩ mô để kiểm soát bối cảnh thị trường.
