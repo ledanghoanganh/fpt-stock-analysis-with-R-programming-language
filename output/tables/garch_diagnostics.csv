@@ -1,71 +1,71 @@
 model,category,test,lag,statistic,p_value,critical_5pct,result
-Raw return,pre_fit_arch,ARCH-LM raw return,12,181.01440329442292,2.6414769294403556e-32,NA,arch_effect_detected
-sGARCH-Normal,serial_correlation,Ljung-Box standardized residuals,20,12.169708933082138,0.910110840414231,NA,no_serial_correlation_detected
-sGARCH-Normal,variance_dependence,Ljung-Box squared standardized residuals,20,12.195375527062673,0.9091871188032515,NA,no_squared_residual_dependence_detected
-sGARCH-Normal,remaining_arch,ARCH-LM standardized residuals,12,8.050022981290097,0.781209135219023,NA,no_remaining_arch_detected
-sGARCH-Normal,asymmetry,Sign Bias,NA,0.5936122501771774,0.5528169350278016,NA,no_sign_bias_detected
-sGARCH-Normal,asymmetry,Negative Sign Bias,NA,0.9870848472042532,0.3236818869888458,NA,no_sign_bias_detected
-sGARCH-Normal,asymmetry,Positive Sign Bias,NA,0.9911271803217512,0.32170465852833713,NA,no_sign_bias_detected
-sGARCH-Normal,asymmetry,Joint Effect,NA,6.4255163093400505,0.09264669647939235,NA,no_sign_bias_detected
-sGARCH-Normal,parameter_stability,Nyblom joint stability,NA,11.611063828062516,NA,1.24,parameter_instability_flagged
-sGARCH-Normal,parameter_stability,Nyblom mu,NA,0.048758884102936675,NA,0.47,parameter_stable_at_5pct
-sGARCH-Normal,parameter_stability,Nyblom omega,NA,2.282208593597368,NA,0.47,parameter_instability_flagged
-sGARCH-Normal,parameter_stability,Nyblom alpha1,NA,0.4220453121197971,NA,0.47,parameter_stable_at_5pct
-sGARCH-Normal,parameter_stability,Nyblom beta1,NA,0.35828099922287127,NA,0.47,parameter_stable_at_5pct
-sGARCH-Normal,distribution_fit,Adjusted Pearson group 20,NA,676.9107806691451,2.791600805698044e-131,NA,distribution_fit_flagged
-sGARCH-Normal,distribution_fit,Adjusted Pearson group 30,NA,545.1196350118283,1.465607117796739e-96,NA,distribution_fit_flagged
-sGARCH-Normal,distribution_fit,Adjusted Pearson group 40,NA,970.1247042919906,3.9933951107781325e-178,NA,distribution_fit_flagged
-sGARCH-Normal,distribution_fit,Adjusted Pearson group 50,NA,1425.6062859074011,2.4689582248370364e-266,NA,distribution_fit_flagged
-sGARCH-Student-t,serial_correlation,Ljung-Box standardized residuals,20,11.186688174092911,0.9412366472491882,NA,no_serial_correlation_detected
-sGARCH-Student-t,variance_dependence,Ljung-Box squared standardized residuals,20,18.670877975634802,0.5433025123157643,NA,no_squared_residual_dependence_detected
-sGARCH-Student-t,remaining_arch,ARCH-LM standardized residuals,12,13.900367077886962,0.30711589066384615,NA,no_remaining_arch_detected
-sGARCH-Student-t,asymmetry,Sign Bias,NA,0.4135180728177,0.6792571010028776,NA,no_sign_bias_detected
-sGARCH-Student-t,asymmetry,Negative Sign Bias,NA,0.24574679744209194,0.8058953159010422,NA,no_sign_bias_detected
-sGARCH-Student-t,asymmetry,Positive Sign Bias,NA,1.9384554953268591,0.052662825563687225,NA,no_sign_bias_detected
-sGARCH-Student-t,asymmetry,Joint Effect,NA,7.3261847159086555,0.06219679099430875,NA,no_sign_bias_detected
-sGARCH-Student-t,parameter_stability,Nyblom joint stability,NA,14.477933735253911,NA,1.47,parameter_instability_flagged
-sGARCH-Student-t,parameter_stability,Nyblom mu,NA,0.2047718459734422,NA,0.47,parameter_stable_at_5pct
-sGARCH-Student-t,parameter_stability,Nyblom omega,NA,1.575251289259203,NA,0.47,parameter_instability_flagged
-sGARCH-Student-t,parameter_stability,Nyblom alpha1,NA,0.21256247293742828,NA,0.47,parameter_stable_at_5pct
-sGARCH-Student-t,parameter_stability,Nyblom beta1,NA,0.26112803599535983,NA,0.47,parameter_stable_at_5pct
-sGARCH-Student-t,parameter_stability,Nyblom shape,NA,0.22600312350123852,NA,0.47,parameter_stable_at_5pct
-sGARCH-Student-t,distribution_fit,Adjusted Pearson group 20,NA,517.167624197364,1.3913386334833288e-97,NA,distribution_fit_flagged
-sGARCH-Student-t,distribution_fit,Adjusted Pearson group 30,NA,938.6782696857045,7.635799475479978e-179,NA,distribution_fit_flagged
-sGARCH-Student-t,distribution_fit,Adjusted Pearson group 40,NA,631.7671510645489,4.345257095620245e-108,NA,distribution_fit_flagged
-sGARCH-Student-t,distribution_fit,Adjusted Pearson group 50,NA,874.5755322744169,1.1747906310299858e-151,NA,distribution_fit_flagged
-eGARCH-Student-t,serial_correlation,Ljung-Box standardized residuals,20,10.651821435418757,0.9547569644108341,NA,no_serial_correlation_detected
-eGARCH-Student-t,variance_dependence,Ljung-Box squared standardized residuals,20,14.340267059843674,0.8128330635001623,NA,no_squared_residual_dependence_detected
-eGARCH-Student-t,remaining_arch,ARCH-LM standardized residuals,12,10.898050697685074,0.5376754215315719,NA,no_remaining_arch_detected
-eGARCH-Student-t,asymmetry,Sign Bias,NA,0.7462339409996112,0.4555854889903763,NA,no_sign_bias_detected
-eGARCH-Student-t,asymmetry,Negative Sign Bias,NA,1.4303393526195731,0.1527254077608642,NA,no_sign_bias_detected
-eGARCH-Student-t,asymmetry,Positive Sign Bias,NA,1.7044803170069016,0.08839654722028824,NA,no_sign_bias_detected
-eGARCH-Student-t,asymmetry,Joint Effect,NA,7.268513022202592,0.06381437481134608,NA,no_sign_bias_detected
-eGARCH-Student-t,parameter_stability,Nyblom joint stability,NA,1.5931573966765809,NA,1.68,parameters_stable_at_5pct
-eGARCH-Student-t,parameter_stability,Nyblom mu,NA,0.17038721256535086,NA,0.47,parameter_stable_at_5pct
-eGARCH-Student-t,parameter_stability,Nyblom omega,NA,0.3486625297022401,NA,0.47,parameter_stable_at_5pct
-eGARCH-Student-t,parameter_stability,Nyblom alpha1,NA,0.5109735678790761,NA,0.47,parameter_instability_flagged
-eGARCH-Student-t,parameter_stability,Nyblom beta1,NA,0.3365472384260654,NA,0.47,parameter_stable_at_5pct
-eGARCH-Student-t,parameter_stability,Nyblom gamma1,NA,0.13084405015279005,NA,0.47,parameter_stable_at_5pct
-eGARCH-Student-t,parameter_stability,Nyblom shape,NA,0.20536589543135275,NA,0.47,parameter_stable_at_5pct
-eGARCH-Student-t,distribution_fit,Adjusted Pearson group 20,NA,552.6931395741805,4.714908184643799e-105,NA,distribution_fit_flagged
-eGARCH-Student-t,distribution_fit,Adjusted Pearson group 30,NA,1035.8259547144305,2.3104607829171183e-199,NA,distribution_fit_flagged
-eGARCH-Student-t,distribution_fit,Adjusted Pearson group 40,NA,1494.274754984792,1.7712558054926767e-288,NA,distribution_fit_flagged
-eGARCH-Student-t,distribution_fit,Adjusted Pearson group 50,NA,1520.773572152754,2.4311047334937676e-286,NA,distribution_fit_flagged
-gjrGARCH-Student-t,serial_correlation,Ljung-Box standardized residuals,20,11.821584849413979,0.9220799739390767,NA,no_serial_correlation_detected
-gjrGARCH-Student-t,variance_dependence,Ljung-Box squared standardized residuals,20,19.2912436460851,0.5029737593341244,NA,no_squared_residual_dependence_detected
-gjrGARCH-Student-t,remaining_arch,ARCH-LM standardized residuals,12,15.607586614405474,0.20987741072448676,NA,no_remaining_arch_detected
-gjrGARCH-Student-t,asymmetry,Sign Bias,NA,0.5186455039818443,0.6040468184858153,NA,no_sign_bias_detected
-gjrGARCH-Student-t,asymmetry,Negative Sign Bias,NA,1.3451910908637488,0.17866678841321088,NA,no_sign_bias_detected
-gjrGARCH-Student-t,asymmetry,Positive Sign Bias,NA,1.7855000623055088,0.07428280168888339,NA,no_sign_bias_detected
-gjrGARCH-Student-t,asymmetry,Joint Effect,NA,6.709761939028824,0.08174712392020378,NA,no_sign_bias_detected
-gjrGARCH-Student-t,parameter_stability,Nyblom joint stability,NA,36.87019274588842,NA,1.68,parameter_instability_flagged
-gjrGARCH-Student-t,parameter_stability,Nyblom mu,NA,0.19860200667524358,NA,0.47,parameter_stable_at_5pct
-gjrGARCH-Student-t,parameter_stability,Nyblom omega,NA,4.697076834163867,NA,0.47,parameter_instability_flagged
-gjrGARCH-Student-t,parameter_stability,Nyblom alpha1,NA,0.1664163112553177,NA,0.47,parameter_stable_at_5pct
-gjrGARCH-Student-t,parameter_stability,Nyblom beta1,NA,0.2965556084845139,NA,0.47,parameter_stable_at_5pct
-gjrGARCH-Student-t,parameter_stability,Nyblom gamma1,NA,0.4683162802781348,NA,0.47,parameter_stable_at_5pct
-gjrGARCH-Student-t,parameter_stability,Nyblom shape,NA,0.255603024187312,NA,0.47,parameter_stable_at_5pct
-gjrGARCH-Student-t,distribution_fit,Adjusted Pearson group 20,NA,534.9844542075026,2.506706984804724e-101,NA,distribution_fit_flagged
-gjrGARCH-Student-t,distribution_fit,Adjusted Pearson group 30,NA,1018.1443055086178,1.2661215924655013e-195,NA,distribution_fit_flagged
-gjrGARCH-Student-t,distribution_fit,Adjusted Pearson group 40,NA,1469.671848597499,2.86768921894801e-283,NA,distribution_fit_flagged
-gjrGARCH-Student-t,distribution_fit,Adjusted Pearson group 50,NA,1051.6285907401148,3.168053226470242e-188,NA,distribution_fit_flagged
+Raw return,pre_fit_arch,ARCH-LM raw return,12,211.97152961542437,1.0934587850687131e-38,NA,arch_effect_detected
+sGARCH-Normal,serial_correlation,Ljung-Box standardized residuals,20,14.256087008324299,0.8172779332381602,NA,no_serial_correlation_detected
+sGARCH-Normal,variance_dependence,Ljung-Box squared standardized residuals,20,12.913193392534453,0.881077368877699,NA,no_squared_residual_dependence_detected
+sGARCH-Normal,remaining_arch,ARCH-LM standardized residuals,12,7.679842583873742,0.8096225937560271,NA,no_remaining_arch_detected
+sGARCH-Normal,asymmetry,Sign Bias,NA,0.8756980190025488,0.38126984983322354,NA,no_sign_bias_detected
+sGARCH-Normal,asymmetry,Negative Sign Bias,NA,0.5590603343917908,0.5761655593950007,NA,no_sign_bias_detected
+sGARCH-Normal,asymmetry,Positive Sign Bias,NA,0.9222010910610826,0.3565036908679138,NA,no_sign_bias_detected
+sGARCH-Normal,asymmetry,Joint Effect,NA,6.18583017557248,0.10291101358455075,NA,no_sign_bias_detected
+sGARCH-Normal,parameter_stability,Nyblom joint stability,NA,12.899143598290529,NA,1.24,parameter_instability_flagged
+sGARCH-Normal,parameter_stability,Nyblom mu,NA,0.049045325620565336,NA,0.47,parameter_stable_at_5pct
+sGARCH-Normal,parameter_stability,Nyblom omega,NA,2.892422961481637,NA,0.47,parameter_instability_flagged
+sGARCH-Normal,parameter_stability,Nyblom alpha1,NA,0.48487300948309653,NA,0.47,parameter_instability_flagged
+sGARCH-Normal,parameter_stability,Nyblom beta1,NA,0.41282016309109953,NA,0.47,parameter_stable_at_5pct
+sGARCH-Normal,distribution_fit,Adjusted Pearson group 20,NA,240.33165829145725,2.790867134451415e-40,NA,distribution_fit_flagged
+sGARCH-Normal,distribution_fit,Adjusted Pearson group 30,NA,229.678391959799,4.241063323881362e-33,NA,distribution_fit_flagged
+sGARCH-Normal,distribution_fit,Adjusted Pearson group 40,NA,372.7078248384781,4.688688737196326e-56,NA,distribution_fit_flagged
+sGARCH-Normal,distribution_fit,Adjusted Pearson group 50,NA,472.7221823402728,1.1847769773263978e-70,NA,distribution_fit_flagged
+sGARCH-Student-t,serial_correlation,Ljung-Box standardized residuals,20,13.422705910231894,0.8585201427341621,NA,no_serial_correlation_detected
+sGARCH-Student-t,variance_dependence,Ljung-Box squared standardized residuals,20,14.880644646952861,0.7831959149949697,NA,no_squared_residual_dependence_detected
+sGARCH-Student-t,remaining_arch,ARCH-LM standardized residuals,12,11.415271253264788,0.49370444485267817,NA,no_remaining_arch_detected
+sGARCH-Student-t,asymmetry,Sign Bias,NA,0.793570977318362,0.4275129364209479,NA,no_sign_bias_detected
+sGARCH-Student-t,asymmetry,Negative Sign Bias,NA,0.557711048805682,0.5770866004656645,NA,no_sign_bias_detected
+sGARCH-Student-t,asymmetry,Positive Sign Bias,NA,1.7513088905790994,0.08000295225586893,NA,no_sign_bias_detected
+sGARCH-Student-t,asymmetry,Joint Effect,NA,7.4028774863083955,0.06010716614375426,NA,no_sign_bias_detected
+sGARCH-Student-t,parameter_stability,Nyblom joint stability,NA,11.889827095523572,NA,1.47,parameter_instability_flagged
+sGARCH-Student-t,parameter_stability,Nyblom mu,NA,0.2003492692827901,NA,0.47,parameter_stable_at_5pct
+sGARCH-Student-t,parameter_stability,Nyblom omega,NA,1.2641330649284086,NA,0.47,parameter_instability_flagged
+sGARCH-Student-t,parameter_stability,Nyblom alpha1,NA,0.40044070457369685,NA,0.47,parameter_stable_at_5pct
+sGARCH-Student-t,parameter_stability,Nyblom beta1,NA,0.4256542123148507,NA,0.47,parameter_stable_at_5pct
+sGARCH-Student-t,parameter_stability,Nyblom shape,NA,0.3607177106494493,NA,0.47,parameter_stable_at_5pct
+sGARCH-Student-t,distribution_fit,Adjusted Pearson group 20,NA,92.16223977027997,1.3698006615686249e-11,NA,distribution_fit_flagged
+sGARCH-Student-t,distribution_fit,Adjusted Pearson group 30,NA,176.69921033740133,4.088367517749845e-23,NA,distribution_fit_flagged
+sGARCH-Student-t,distribution_fit,Adjusted Pearson group 40,NA,133.02368987796123,3.414317609606149e-12,NA,distribution_fit_flagged
+sGARCH-Student-t,distribution_fit,Adjusted Pearson group 50,NA,283.16726489590815,1.0903966454510578e-34,NA,distribution_fit_flagged
+eGARCH-Student-t,serial_correlation,Ljung-Box standardized residuals,20,13.002959193602592,0.8772570474613526,NA,no_serial_correlation_detected
+eGARCH-Student-t,variance_dependence,Ljung-Box squared standardized residuals,20,13.76269258559807,0.8423212163306125,NA,no_squared_residual_dependence_detected
+eGARCH-Student-t,remaining_arch,ARCH-LM standardized residuals,12,9.659477015318316,0.6458066468264198,NA,no_remaining_arch_detected
+eGARCH-Student-t,asymmetry,Sign Bias,NA,0.9299018827130134,0.352502596975949,NA,no_sign_bias_detected
+eGARCH-Student-t,asymmetry,Negative Sign Bias,NA,1.2651329044383357,0.20592968378918994,NA,no_sign_bias_detected
+eGARCH-Student-t,asymmetry,Positive Sign Bias,NA,1.4675662940282814,0.14233515025298255,NA,no_sign_bias_detected
+eGARCH-Student-t,asymmetry,Joint Effect,NA,6.212473800051261,0.10171828163350446,NA,no_sign_bias_detected
+eGARCH-Student-t,parameter_stability,Nyblom joint stability,NA,1.5047618217213727,NA,1.68,parameters_stable_at_5pct
+eGARCH-Student-t,parameter_stability,Nyblom mu,NA,0.18755040671744408,NA,0.47,parameter_stable_at_5pct
+eGARCH-Student-t,parameter_stability,Nyblom omega,NA,0.4802391092700944,NA,0.47,parameter_instability_flagged
+eGARCH-Student-t,parameter_stability,Nyblom alpha1,NA,0.4626164802724128,NA,0.47,parameter_stable_at_5pct
+eGARCH-Student-t,parameter_stability,Nyblom beta1,NA,0.4697567264247127,NA,0.47,parameter_stable_at_5pct
+eGARCH-Student-t,parameter_stability,Nyblom gamma1,NA,0.07224143901162693,NA,0.47,parameter_stable_at_5pct
+eGARCH-Student-t,parameter_stability,Nyblom shape,NA,0.27248995979686186,NA,0.47,parameter_stable_at_5pct
+eGARCH-Student-t,distribution_fit,Adjusted Pearson group 20,NA,113.26776740847092,1.9854536933115005e-15,NA,distribution_fit_flagged
+eGARCH-Student-t,distribution_fit,Adjusted Pearson group 30,NA,257.69705671213205,1.6294295966790592e-38,NA,distribution_fit_flagged
+eGARCH-Student-t,distribution_fit,Adjusted Pearson group 40,NA,326.6489590811198,4.163895163606742e-47,NA,distribution_fit_flagged
+eGARCH-Student-t,distribution_fit,Adjusted Pearson group 50,NA,233.70567121320892,6.8709175118757e-26,NA,distribution_fit_flagged
+gjrGARCH-Student-t,serial_correlation,Ljung-Box standardized residuals,20,13.214731293946043,0.8679818781019457,NA,no_serial_correlation_detected
+gjrGARCH-Student-t,variance_dependence,Ljung-Box squared standardized residuals,20,17.324013673551175,0.6318449163214399,NA,no_squared_residual_dependence_detected
+gjrGARCH-Student-t,remaining_arch,ARCH-LM standardized residuals,12,13.042886220408848,0.3659312508282916,NA,no_remaining_arch_detected
+gjrGARCH-Student-t,asymmetry,Sign Bias,NA,0.8593429410641793,0.39022540609847955,NA,no_sign_bias_detected
+gjrGARCH-Student-t,asymmetry,Negative Sign Bias,NA,1.3359632031673547,0.1816706116571464,NA,no_sign_bias_detected
+gjrGARCH-Student-t,asymmetry,Positive Sign Bias,NA,1.5907426246331562,0.1117811695186361,NA,no_sign_bias_detected
+gjrGARCH-Student-t,asymmetry,Joint Effect,NA,6.583624901107161,0.08642224721100716,NA,no_sign_bias_detected
+gjrGARCH-Student-t,parameter_stability,Nyblom joint stability,NA,27.34784561275683,NA,1.68,parameter_instability_flagged
+gjrGARCH-Student-t,parameter_stability,Nyblom mu,NA,0.2057108070561332,NA,0.47,parameter_stable_at_5pct
+gjrGARCH-Student-t,parameter_stability,Nyblom omega,NA,3.471235763086932,NA,0.47,parameter_instability_flagged
+gjrGARCH-Student-t,parameter_stability,Nyblom alpha1,NA,0.3287707925629867,NA,0.47,parameter_stable_at_5pct
+gjrGARCH-Student-t,parameter_stability,Nyblom beta1,NA,0.47089105046968294,NA,0.47,parameter_instability_flagged
+gjrGARCH-Student-t,parameter_stability,Nyblom gamma1,NA,0.6788363428759758,NA,0.47,parameter_instability_flagged
+gjrGARCH-Student-t,parameter_stability,Nyblom shape,NA,0.4204239137306934,NA,0.47,parameter_stable_at_5pct
+gjrGARCH-Student-t,distribution_fit,Adjusted Pearson group 20,NA,105.48600143575017,5.3743445944198836e-14,NA,distribution_fit_flagged
+gjrGARCH-Student-t,distribution_fit,Adjusted Pearson group 30,NA,243.4615936826992,9.396905151341673e-36,NA,distribution_fit_flagged
+gjrGARCH-Student-t,distribution_fit,Adjusted Pearson group 40,NA,259.8578607322326,1.9922984625192295e-34,NA,distribution_fit_flagged
+gjrGARCH-Student-t,distribution_fit,Adjusted Pearson group 50,NA,225.30653266331657,1.955725331531303e-24,NA,distribution_fit_flagged
