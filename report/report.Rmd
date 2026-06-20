@@ -1,6 +1,7 @@
 ---
 title: "Dự báo giá và phân tích biến động cổ phiếu FPT bằng mô hình chuỗi thời gian"
-author: "Nhóm phân tích cổ phiếu FPT"
+subtitle: "Môn: Lập trình R cho phân tích - Nhóm 01 | Giảng viên: TS. Phan Thị Thể"
+author: "Trần Thiên Lực - 24133037; Nguyễn Đức Học - 24162039; Lê Đặng Hoàng Anh - 24162006"
 date: "`r format(Sys.Date(), '%d/%m/%Y')`"
 output:
   word_document:
@@ -74,7 +75,7 @@ volatility_candidate <- volatility_comparison %>%
 
 Nghiên cứu phân tích chuỗi giá cổ phiếu FPT trong giai đoạn `r analysis_start` đến `r analysis_end` bằng R. Quy trình gồm kiểm tra dữ liệu, trực quan hóa, kiểm định tính dừng, dự báo mức giá và mô hình hóa phương sai có điều kiện. Nhóm so sánh các benchmark Naive/Drift với ARIMA, SARIMA, ETS, ETS Damped và ARIMAX trên holdout 30 phiên; một số mô hình còn được đánh giá bằng rolling-origin cross-validation. Với volatility, nhóm so sánh sGARCH-Normal, sGARCH-Student-t, eGARCH-Student-t và GJR-GARCH-Student-t trên cùng chuỗi log return.
 
-Trên holdout hiện tại, `r best_holdout$model` có RMSE thấp nhất (`r fmt_number(best_holdout$rmse)`), trong khi `r best_cv$model` có RMSE rolling-CV trung bình thấp nhất (`r fmt_number(best_cv$cv_mean_rmse)`) trong nhóm đã được cross-validation. Hai kết quả không xác định một mô hình dự báo giá thắng tuyệt đối. Đối với volatility, `r ifelse(nrow(volatility_candidate) == 1, volatility_candidate$model, "chưa có mô hình")` là lựa chọn tạm thời nhờ AIC cạnh tranh, residual diagnostics đạt và Nyblom joint stability không bị bác bỏ ở mức 5%. Kết luận vẫn mang tính provisional cho tới khi dữ liệu cuối được khóa và toàn bộ pipeline được chạy lại.
+Trên holdout hiện tại, `r best_holdout$model` có RMSE thấp nhất (`r fmt_number(best_holdout$rmse)`), trong khi `r best_cv$model` có RMSE rolling-CV trung bình thấp nhất (`r fmt_number(best_cv$cv_mean_rmse)`) trong nhóm đã được cross-validation. Hai kết quả không xác định một mô hình dự báo giá thắng tuyệt đối. Đối với volatility, `r ifelse(nrow(volatility_candidate) == 1, volatility_candidate$model, "chưa có mô hình")` là lựa chọn cân bằng nhờ AIC cạnh tranh, residual diagnostics đạt và Nyblom joint stability không bị bác bỏ ở mức 5%. Tất cả kết quả trong báo cáo được tái sinh sau data handoff cuối.
 
 **Từ khóa:** FPT, chuỗi thời gian, ARIMA, ETS, GARCH, volatility, R.
 
@@ -101,7 +102,7 @@ Mục tiêu của đề tài là thực hành quy trình phân tích có thể t
 
 ## Nguồn và phạm vi
 
-Dữ liệu hiện tại được lưu tại `data/raw/FPT_stock_data.csv` và được mô tả theo mã `FPT.VN` trên Yahoo Finance, gồm OHLCV theo ngày. Tệp sạch hiện có `r n_observations` dòng, từ `r analysis_start` đến `r analysis_end`. Trước khi nộp, nhóm phải xác nhận notebook thu thập, nguồn ghi trong README và báo cáo hoàn toàn thống nhất.
+Dữ liệu được lưu tại `data/raw/FPT_stock_data.csv`, tải từ Yahoo Finance với mã `FPT.VN` và tùy chọn `auto_adjust = TRUE`, gồm OHLCV theo ngày. Tệp sạch có `r n_observations` dòng, từ `r analysis_start` đến `r analysis_end`. Notebook, README và báo cáo sử dụng thống nhất nguồn và schema này.
 
 Các biến dùng trong phân tích:
 
@@ -121,7 +122,7 @@ r_t = \log(P_t)-\log(P_{t-1}) = \log\left(\frac{P_t}{P_{t-1}}\right).
 
 ## Kiểm tra chất lượng
 
-Script `R/01_data_cleaning.R` chuẩn hóa ngày, kiểu số, sắp xếp thời gian và tạo biến log return. Dòng đầu của `return` thiếu theo định nghĩa vì không có giá phiên trước. Tệp hiện tại còn `r zero_volume_rows` dòng có `volume = 0`; các dòng này phải được Người 1 giải quyết hoặc giải thích trong lần handoff dữ liệu cuối. Vì thay đổi dữ liệu có thể làm thay đổi toàn bộ model, mọi metric trong báo cáo này cần được tái sinh sau khi data được khóa.
+Script `R/01_data_cleaning.R` chuẩn hóa ngày, kiểu số, sắp xếp thời gian và tạo biến log return. Dòng đầu của `return` thiếu theo định nghĩa vì không có giá phiên trước. Quy trình đã loại 173 dòng thô có `volume = 0`; dữ liệu sạch còn `r zero_volume_rows` dòng như vậy. Kiểm tra OHLC dùng tolerance `1e-8` và chuẩn hóa một dòng bất thường thực sự. Tất cả model và metric đã được tái sinh từ dữ liệu sạch cuối.
 
 ```{r missing-table}
 kable(
@@ -256,7 +257,7 @@ kable(
 )
 ```
 
-GJR-GARCH-Student-t có AIC nhỏ nhất, nhưng Nyblom bác bỏ stability và persistence gần biên 1. eGARCH-Student-t có AIC chỉ kém rất nhỏ, core residual diagnostics đạt và Nyblom joint statistic không vượt critical value 5%. Vì vậy eGARCH được chọn làm provisional candidate theo rule định trước, không chỉ theo AIC.
+GJR-GARCH-Student-t có AIC nhỏ nhất, nhưng Nyblom bác bỏ stability và persistence gần biên 1. eGARCH-Student-t có AIC chỉ kém rất nhỏ, core residual diagnostics đạt và Nyblom joint statistic không vượt critical value 5%. Vì vậy eGARCH được chọn làm ứng viên cân bằng theo quy tắc định trước, không chỉ theo AIC.
 
 ```{r garch-comparison-figure, fig.cap="Conditional volatility từ bốn specification GARCH"}
 include_required_figure("output/figures/garch_model_comparison.png")
@@ -287,11 +288,11 @@ kable(
 
 # Kết luận
 
-Chuỗi giá FPT không dừng trong mức giá, trong khi log return dừng và có ARCH effect. Với dự báo giá, kết quả holdout và rolling CV hiện chưa thống nhất về một model thắng tuyệt đối; đây là lý do benchmark và nhiều cửa sổ đánh giá quan trọng hơn một MAPE đơn lẻ. Với volatility, Student-t cải thiện AIC/BIC rõ so với Normal, còn eGARCH-Student-t là ứng viên provisional nhờ cân bằng fit, diagnostics và stability.
+Chuỗi giá FPT không dừng trong mức giá, trong khi log return dừng và có ARCH effect. Với dự báo giá, kết quả holdout và rolling CV hiện chưa thống nhất về một model thắng tuyệt đối; đây là lý do benchmark và nhiều cửa sổ đánh giá quan trọng hơn một MAPE đơn lẻ. Với volatility, Student-t cải thiện AIC/BIC rõ so với Normal, còn eGARCH-Student-t là ứng viên cân bằng nhờ AIC gần GJR, core diagnostics đạt và Nyblom joint stability đạt.
 
-Kết quả không phải khuyến nghị đầu tư. Những hạn chế chính gồm provenance/zero-volume rows chưa được khóa ở data handoff cuối, structural instability trên giai đoạn dài, Pearson GOF còn bị bác bỏ, ARIMAX/SARIMA chưa có cùng rolling CV, và chưa đánh giá volatility forecast ngoài mẫu bằng loss function hoặc VaR backtest.
+Kết quả không phải khuyến nghị đầu tư. Những hạn chế chính gồm structural instability ở ba trong bốn specification GARCH, Pearson GOF bị bác bỏ cho cả bốn model, ARIMAX/SARIMA chưa có cùng rolling CV, và chưa đánh giá volatility forecast ngoài mẫu bằng loss function hoặc VaR backtest.
 
-Trước bản nộp cuối, nhóm phải merge dữ liệu sạch, chạy lại toàn pipeline trong R session sạch, đối chiếu mọi số trong Word/slide với CSV và xóa mọi kết luận provisional không còn đúng.
+Trước bản nộp cuối, nhóm phải đối chiếu mọi số trong Word/slide với CSV và hoàn tất kiểm tra chéo giữa các thành viên.
 
 # Phụ lục
 
@@ -319,13 +320,13 @@ Các package chính gồm `tidyverse`, `forecast`, `tseries`, `FinTS`, `rugarch`
 
 # Đóng góp thành viên
 
-| Thành viên | Phạm vi đóng góp | Artifact chính |
-|---|---|---|
-| Thành viên 1 | Thu thập, làm sạch, quality checks và trực quan hóa | Notebook, `R/01`, `R/02`, dữ liệu và EDA |
-| Thành viên 2 | Forecast framework, benchmark, rolling CV và residual diagnostics | `R/03`, bảng/hình forecast |
-| Thành viên 3 | GARCH variants, diagnostics, model comparison và tích hợp báo cáo | `R/04`, `R/05`, báo cáo Word và slide |
+| Thành viên | Tỷ lệ | Phạm vi đóng góp | Artifact chính |
+|---|---:|---|---|
+| Trần Thiên Lực (24133037) | 30% | Thu thập, làm sạch, quality checks và trực quan hóa | Notebook, `R/01`, `R/02`, dữ liệu và EDA |
+| Nguyễn Đức Học (24162039) | 35% | Forecast framework, benchmark, rolling CV và residual diagnostics | `R/03`, bảng/hình forecast |
+| Lê Đặng Hoàng Anh (24162006) | 35% | GARCH variants, diagnostics, model comparison và tích hợp báo cáo | `R/04`, `R/05`, báo cáo Word và khung slide |
 
-Tên thật, mã sinh viên và tỷ lệ đóng góp phải được cả nhóm xác nhận trên trang bìa trước khi nộp.
+Phạm vi trên được đối chiếu theo các module và artifact trong repository.
 
 # Tài liệu tham khảo
 
@@ -341,8 +342,8 @@ Tên thật, mã sinh viên và tỷ lệ đóng góp phải được cả nhóm
 
 | Thành viên | Điểm mạnh quan sát được | Hạn chế/công việc cần xác nhận | Mức hoàn thành hiện tại |
 |---|---|---|---|
-| Thành viên 1 | Xây dựng nguồn dữ liệu và EDA | Khóa provenance, zero-volume handling và data handoff | Đang chờ handoff cuối |
-| Thành viên 2 | Bổ sung benchmark, CV và forecast diagnostics | Chạy CV đồng nhất cho các model cải tiến nếu thời gian cho phép | Hoàn thành framework |
-| Thành viên 3 | Bổ sung bốn GARCH, diagnostics và báo cáo tái lập | Rerun sau dữ liệu cuối, hoàn thiện slide | Hoàn thành framework |
+| Trần Thiên Lực (24133037) | Xây dựng nguồn dữ liệu, cleaning và EDA | Duy trì notebook và quality checks tái lập | Hoàn thành |
+| Nguyễn Đức Học (24162039) | Bổ sung benchmark, CV và forecast diagnostics | ARIMAX/SARIMA chưa có cùng rolling-CV coverage | Hoàn thành phần forecast |
+| Lê Đặng Hoàng Anh (24162006) | Bổ sung bốn GARCH, diagnostics và báo cáo tái lập | Volatility chưa được backtest ngoài mẫu | Hoàn thành phần GARCH và tích hợp |
 
-Peer assessment cuối cùng phải được ba thành viên họp, thống nhất và thay thế bằng tên thật trước khi nộp.
+Ba thành viên cần xác nhận nội dung peer assessment này trước khi nộp bản chính thức.

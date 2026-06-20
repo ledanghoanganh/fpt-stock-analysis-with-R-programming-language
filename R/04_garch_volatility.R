@@ -590,4 +590,3 @@ message("Completed GARCH framework: ", length(successful_fits), "/",
         nrow(model_specs), " models fitted.")
 message("Pre-fit ARCH-LM p-value: ", format(pre_arch$p.value, scientific = TRUE))
 print(diagnostic_summary_rows)
-

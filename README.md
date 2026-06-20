@@ -2,6 +2,10 @@
 
 > **Môn học:** Lập trình R cho phân tích
 >
+> **Nhóm:** 01
+>
+> **Giảng viên:** TS. Phan Thị Thể
+>
 > **Bài toán:** Dự báo mức giá và phân tích conditional volatility của cổ phiếu FPT
 >
 > **Công nghệ chính:** R, R Markdown; Python/Google Colab cho bước thu thập dữ liệu
@@ -39,13 +43,11 @@ Snapshot hiện tại đã có:
 
 ### Việc phải khóa trước bản nộp cuối
 
-- Xác nhận duy nhất một nguồn dữ liệu giữa notebook, tài liệu Data và README.
-- Xử lý hoặc giải thích các dòng `volume = 0`; dữ liệu hiện tại còn 173 dòng như vậy.
-- Chạy lại toàn bộ pipeline sau khi Người 1 phát hành data handoff cuối.
 - Đối chiếu lại mọi số trong Word và slide với CSV mới nhất.
 - Điền tên thật, mã sinh viên, contributions và peer assessment đã thống nhất.
 
-Do các điểm trên, kết quả định lượng dưới đây được xem là **provisional**.
+Data handoff đã hoàn tất: notebook, raw CSV và tài liệu cùng dùng Yahoo Finance
+(`FPT.VN`); 173 dòng `volume = 0` đã bị loại trước khi mô hình hóa.
 
 ## Dữ liệu
 
@@ -53,8 +55,9 @@ Do các điểm trên, kết quả định lượng dưới đây được xem l
 |---|---|
 | Mã cổ phiếu | FPT, HOSE |
 | Khoảng thời gian | 2015-01-01 đến 2026-06-08 |
-| Số quan sát | 2,960 dòng |
-| Số log return hợp lệ | 2,959 |
+| Số quan sát dữ liệu thô | 2,960 dòng |
+| Số quan sát dữ liệu sạch | 2,787 dòng |
+| Số log return hợp lệ | 2,786 |
 | File raw | `data/raw/FPT_stock_data.csv` |
 | File model input | `data/processed/fpt_clean.csv` |
 
@@ -65,15 +68,15 @@ Tệp sạch hiện có các cột:
 | `date` | Ngày quan sát |
 | `open`, `high`, `low`, `close` | Dữ liệu giá OHLC |
 | `volume` | Khối lượng giao dịch |
-| `time` | Cột ngày tương thích với visualization cũ |
 | `log_close` | `log(close)` |
 | `return` | `log(close_t) - log(close_(t-1))` |
 
-Mục tiêu sau data handoff là bỏ cột tương thích `time` và thống nhất schema tám cột được mô tả trong [`docs/guide_nguoi_1.md`](docs/guide_nguoi_1.md).
-
 ### Lưu ý về provenance
 
-Dữ liệu hiện tại có cấu trúc và giá điều chỉnh tương ứng với lịch sử `FPT.VN` được mô tả trong phần Data của báo cáo. Notebook cũ trong repository từng dùng API TCBS và chưa tái tạo đúng toàn bộ giai đoạn hiện tại. Vì vậy provenance chỉ được xem là hoàn tất sau khi notebook mới, raw CSV và tài liệu cùng chỉ ra một nguồn duy nhất.
+Dữ liệu được tải từ Yahoo Finance bằng notebook tái lập tại
+`notebooks/01_scrape_fpt_colab.ipynb` với `auto_adjust = TRUE`. Notebook xuất
+đúng tên `FPT_stock_data.csv`; quy trình làm sạch và quality report được mô tả
+trong [`data/README_data.md`](data/README_data.md).
 
 ## Hệ thống mô hình
 
@@ -102,7 +105,7 @@ Các model được đánh giá trên holdout 30 phiên. Rolling-origin CV hiệ
 
 Tất cả specification dùng cùng chuỗi return và mean equation ARMA(0,0).
 
-## Kết quả provisional
+## Kết quả sau data handoff
 
 ### ADF
 
@@ -127,12 +130,15 @@ Xem [`output/tables/price_forecast_comparison.csv`](output/tables/price_forecast
 
 | Model | AIC | Persistence | Core diagnostics | Nyblom joint 5% |
 |---|---:|---:|---|---|
-| GJR-GARCH Student-t | -5.719414 | 0.999000 | Đạt | Không đạt |
-| eGARCH Student-t | -5.719354 | 0.959118 | Đạt | Đạt |
-| sGARCH Student-t | -5.715306 | 0.999000 | Đạt | Không đạt |
-| sGARCH Normal | -5.558932 | 0.969402 | Đạt | Không đạt |
+| GJR-GARCH Student-t | -5.634427 | 0.985742 | Đạt | Không đạt |
+| eGARCH Student-t | -5.633058 | 0.962670 | Đạt | Đạt |
+| sGARCH Student-t | -5.631732 | 0.989137 | Đạt | Không đạt |
+| sGARCH Normal | -5.507300 | 0.964510 | Đạt | Không đạt |
 
-eGARCH-Student-t là **provisional candidate** vì có AIC gần như ngang GJR, core residual diagnostics đạt và Nyblom joint stability đạt. Adjusted Pearson GOF vẫn bác bỏ distribution fit cho tất cả model, nên đây chưa phải kết luận cuối.
+eGARCH-Student-t là **ứng viên cân bằng** vì AIC chỉ kém GJR khoảng `0.00137`,
+core residual diagnostics đạt và Nyblom joint stability đạt. Adjusted Pearson
+GOF vẫn bác bỏ distribution fit cho tất cả model, nên lựa chọn này phải được
+trình bày cùng hạn chế phân phối.
 
 Xem [`output/tables/volatility_model_comparison.csv`](output/tables/volatility_model_comparison.csv).
 
@@ -255,16 +261,17 @@ Báo cáo chỉ đọc CSV/PNG đã sinh, không chạy lại model trong lúc k
 - [`report/report.Rmd`](report/report.Rmd): nguồn báo cáo tái lập, đủ 11 phần rubric.
 - [`report/report.docx`](report/report.docx): Word đã render và nhúng bảng/hình.
 - `output/tables/report_tables.xlsx`: workbook hỗ trợ kiểm tra bảng.
+- [`presentation/khung_noi_dung_slide.docx`](presentation/khung_noi_dung_slide.docx): khung nội dung để nhóm hoàn thiện PowerPoint.
 
 ## Phân công
 
-| Vai trò | Phạm vi |
-|---|---|
-| Thành viên 1 | Data provenance, cleaning, quality checks và visualization |
-| Thành viên 2 | Forecast framework, benchmark, rolling CV và residual diagnostics |
-| Thành viên 3 | GARCH variants, diagnostics, model comparison, báo cáo và slide |
+| Thành viên | Tỷ lệ | Phạm vi |
+|---|---:|---|
+| Trần Thiên Lực - 24133037 | 30% | Data provenance, cleaning, quality checks và visualization |
+| Nguyễn Đức Học - 24162039 | 35% | Forecast framework, benchmark, rolling CV và residual diagnostics |
+| Lê Đặng Hoàng Anh - 24162006 | 35% | GARCH variants, diagnostics, model comparison, báo cáo và khung slide |
 
-Tên thật, MSSV và đánh giá đóng góp được hoàn thiện trong báo cáo trước khi nộp.
+Chi tiết đóng góp và peer assessment được trình bày trong báo cáo.
 
 ## Tài liệu dự án
 
@@ -277,4 +284,6 @@ Tên thật, MSSV và đánh giá đóng góp được hoàn thiện trong báo 
 
 ## Giới hạn sử dụng
 
-Đây là đồ án học thuật. Kết quả dự báo và volatility không phải khuyến nghị mua, bán, định giá hay quản trị rủi ro thực tế. Mọi kết luận cuối phải dựa trên lần chạy lại sau data handoff và kiểm tra chéo của cả nhóm.
+Đây là đồ án học thuật. Kết quả dự báo và volatility không phải khuyến nghị mua,
+bán, định giá hay quản trị rủi ro thực tế. Mọi kết luận cuối phải được kiểm tra
+chéo với các CSV trong `output/tables`.

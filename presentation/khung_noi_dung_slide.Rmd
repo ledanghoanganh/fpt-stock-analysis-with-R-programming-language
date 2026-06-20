@@ -1,0 +1,209 @@
+---
+title: "Khung nội dung PowerPoint - Phân tích chuỗi thời gian cổ phiếu FPT"
+subtitle: "Lập trình R cho phân tích - Nhóm 01 | Giảng viên: TS. Phan Thị Thể"
+author: |
+  Trần Thiên Lực - 24133037  
+  Nguyễn Đức Học - 24162039  
+  Lê Đặng Hoàng Anh - 24162006
+date: "`r format(Sys.Date(), '%d/%m/%Y')`"
+output:
+  word_document:
+    toc: true
+    toc_depth: 2
+    number_sections: true
+lang: vi
+---
+
+# Cách dùng tài liệu
+
+Tài liệu này là khung để nhóm dựng PowerPoint cuối. Mỗi mục cấp hai tương ứng
+một slide. Không chép nguyên đoạn văn lên slide: giữ tối đa 4-6 bullet, dùng
+font tối thiểu 24 pt và ưu tiên biểu đồ. Mọi con số phải lấy từ các CSV trong
+`output/tables` sau lần chạy cuối.
+
+Thời lượng đề xuất: 10-12 phút trình bày và 3-5 phút trả lời câu hỏi.
+
+# Khung slide
+
+## Slide 1 - Trang bìa
+
+**Tiêu đề:** Dự báo giá và phân tích biến động cổ phiếu FPT bằng mô hình chuỗi thời gian.
+
+**Thông tin:**
+
+- Trần Thiên Lực - MSSV 24133037
+- Nguyễn Đức Học - MSSV 24162039
+- Lê Đặng Hoàng Anh - MSSV 24162006
+- Môn học: Lập trình R cho phân tích
+- Nhóm: 01
+- Giảng viên: TS. Phan Thị Thể
+
+**Người nói:** Lê Đặng Hoàng Anh. Giới thiệu nhóm và mục tiêu trong 20-30 giây.
+
+## Slide 2 - Bài toán và câu hỏi nghiên cứu
+
+**Nội dung trên slide:**
+
+- Dự báo mức giá đóng cửa bằng benchmark và mô hình chuỗi thời gian.
+- Mô hình hóa conditional volatility của log return.
+- Mô hình phức tạp có cải thiện ngoài mẫu so với Naive/Drift không?
+- Student-t và cấu trúc bất đối xứng có cải thiện GARCH-Normal không?
+
+**Điểm cần nói:** Forecast giá và forecast rủi ro là hai bài toán khác nhau.
+
+## Slide 3 - Nguồn và quy trình dữ liệu
+
+**Nội dung trên slide:**
+
+- Yahoo Finance, mã `FPT.VN`, `auto_adjust = TRUE`.
+- Dữ liệu thô: 2.960 dòng; dữ liệu sạch: 2.787 dòng.
+- Giai đoạn dữ liệu sạch: 2015-01-05 đến 2026-06-08.
+- Loại 173 dòng `volume = 0`; còn 2.786 log return hợp lệ.
+
+**Sơ đồ nên vẽ:** Notebook -> Cleaning -> EDA -> Forecast -> GARCH -> Report.
+
+**Người nói:** Trần Thiên Lực.
+
+## Slide 4 - Kiểm tra chất lượng và biến phân tích
+
+**Nội dung trên slide:**
+
+- Không còn ngày trùng, giá không dương hoặc volume không hợp lệ.
+- OHLC dùng tolerance `1e-8`; chuẩn hóa một dòng bất thường thực sự.
+- `log_close = log(close)`.
+- `return_t = log(close_t) - log(close_(t-1))`.
+
+**Điểm cần nói:** Không fit GARCH trực tiếp trên mức giá.
+
+## Slide 5 - Diễn biến giá và lợi suất
+
+**Hình cần chèn:**
+
+- `output/figures/close_price.png`
+- Có thể bổ sung `output/figures/returns.png` nếu còn chỗ.
+
+**Thông điệp:** Giá có xu hướng dài hạn; return dao động quanh mức gần 0 và có
+các giai đoạn biên độ lớn tập trung.
+
+## Slide 6 - Phân phối và volatility clustering
+
+**Hình cần chèn:**
+
+- `output/figures/return_distribution.png`
+- `output/figures/qqplot_return.png`
+- hoặc `output/figures/squared_returns.png`
+
+**Thông điệp:** Return có heavy tails và volatility clustering, tạo động cơ thử
+Student-t và mô hình phương sai có điều kiện.
+
+## Slide 7 - Tính dừng và ARCH effect
+
+**Nội dung trên slide:**
+
+- ADF H0: chuỗi có unit root, không dừng.
+- `close`: p-value 0,6921; chưa bác bỏ H0.
+- `log_close`: p-value 0,8893; chưa bác bỏ H0.
+- `return`: p-value <= 0,01; bác bỏ H0.
+- ARCH-LM trước GARCH có p-value rất nhỏ.
+
+**Người nói:** Nguyễn Đức Học trình bày ADF; Lê Đặng Hoàng Anh nối sang ARCH.
+
+## Slide 8 - Thiết kế đánh giá forecast
+
+**Nội dung trên slide:**
+
+- Holdout 30 phiên và rolling-origin cross-validation.
+- Benchmark: Naive và Drift.
+- Model: ARIMA, SARIMA, ETS, ETS Damped, ARIMAX Lagged.
+- Metric: RMSE, MAE và MAPE; bổ sung residual diagnostics.
+- Không chọn model chỉ bằng AIC/BIC hoặc một cửa sổ test.
+
+## Slide 9 - Kết quả forecast
+
+**Bảng nguồn:** `output/tables/forecast_metrics.csv`.
+
+**Số chính:**
+
+- Holdout leader: ARIMAX Lagged, RMSE 1.863,36; MAPE 2,05%.
+- Rolling-CV leader trong nhóm đã chạy: ETS Damped, mean RMSE 4.726,67.
+- Holdout và CV không xác định một winner thống nhất.
+- ARIMAX/SARIMA chưa có cùng rolling-CV coverage.
+
+**Hình:** `output/figures/arima_xreg_forecast.png`.
+
+**Người nói:** Nguyễn Đức Học.
+
+## Slide 10 - Các mô hình GARCH
+
+**Nội dung trên slide:**
+
+- sGARCH(1,1)-Normal: baseline đối xứng.
+- sGARCH(1,1)-Student-t: xử lý heavy tails.
+- eGARCH(1,1)-Student-t: log variance và asymmetry.
+- GJR-GARCH(1,1)-Student-t: phản ứng khác nhau với shock âm.
+- Cả bốn model dùng cùng 2.786 returns và ARMA(0,0) mean equation.
+
+## Slide 11 - Kết quả và lựa chọn GARCH
+
+**Bảng nguồn:** `output/tables/volatility_model_comparison.csv`.
+
+**Thông điệp:**
+
+- GJR có AIC nhỏ nhất (-5,6344) nhưng Nyblom bác bỏ stability.
+- eGARCH có AIC -5,6331 và đạt core diagnostics cùng joint stability.
+- eGARCH Student-t là lựa chọn cân bằng, không phải model hoàn hảo.
+- Pearson GOF bác bỏ distribution fit ở cả bốn specification.
+
+**Hình:** `output/figures/garch_model_comparison.png`.
+
+**Người nói:** Lê Đặng Hoàng Anh.
+
+## Slide 12 - Hạn chế
+
+**Nội dung trên slide:**
+
+- Holdout ngắn và kết quả chưa đồng nhất với rolling CV.
+- ARIMAX/SARIMA chưa có CV cùng coverage.
+- Ba specification GARCH không đạt joint stability.
+- Chưa đánh giá volatility forecast ngoài mẫu hoặc VaR backtest.
+- Kết quả không phải khuyến nghị đầu tư và không chứng minh nhân quả.
+
+## Slide 13 - Kết luận
+
+**Nội dung trên slide:**
+
+- Giá không dừng; log return dừng và có ARCH effect.
+- ARIMAX dẫn đầu holdout, ETS Damped dẫn đầu nhóm rolling CV.
+- Student-t cải thiện fit rõ so với Normal.
+- eGARCH Student-t cân bằng tốt nhất giữa fit, diagnostics và stability.
+- Pipeline R tạo lại dữ liệu, bảng, hình và báo cáo từ đầu.
+
+## Slide 14 - Đóng góp và cảm ơn
+
+**Nội dung:**
+
+- Trần Thiên Lực (30%): data provenance, cleaning, quality checks và EDA.
+- Nguyễn Đức Học (35%): forecast, benchmark, rolling CV và diagnostics.
+- Lê Đặng Hoàng Anh (35%): GARCH, comparison, báo cáo và điều phối slide.
+- Cảm ơn giảng viên và mời đặt câu hỏi.
+
+# Câu hỏi phản biện cần chuẩn bị
+
+1. Vì sao dùng log return thay vì simple return hoặc giá đóng cửa cho GARCH?
+2. Vì sao không chọn GJR dù AIC nhỏ nhất?
+3. Persistence gần 1 có ý nghĩa gì?
+4. Vì sao holdout và rolling CV có model dẫn đầu khác nhau?
+5. ARIMAX có nguy cơ leakage như thế nào và dự án phòng tránh ra sao?
+6. P-value lớn có chứng minh H0 đúng không?
+7. `auto_adjust = TRUE` ảnh hưởng cách hiểu các cột giá như thế nào?
+8. Vì sao kết quả không thể xem là khuyến nghị đầu tư?
+
+# Checklist trước khi xuất PowerPoint
+
+- [x] Đã bổ sung tên môn, nhóm và giảng viên.
+- [ ] Dùng thống nhất font, màu và định dạng số thập phân.
+- [ ] Không để bảng hoặc hình tràn khỏi slide.
+- [ ] Chỉ dùng số từ CSV sau lần chạy pipeline cuối.
+- [ ] Ghi nguồn Yahoo Finance ở slide dữ liệu.
+- [ ] Mỗi thành viên tập phần nói và trả lời câu hỏi liên quan module của mình.
+- [ ] Giữ tổng thời lượng trong 10-12 phút.

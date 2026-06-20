@@ -1,0 +1,86 @@
+Pipeline started: 2026-06-20 10:42:57 
+
+=== Running R/01_data_cleaning.R ===
+── Attaching core tidyverse packages ──────────────────────── tidyverse 2.0.0 ──
+✔ dplyr     1.2.1     ✔ readr     2.2.0
+✔ forcats   1.0.1     ✔ stringr   1.6.0
+✔ ggplot2   4.0.3     ✔ tibble    3.3.1
+✔ lubridate 1.9.5     ✔ tidyr     1.3.2
+✔ purrr     1.2.2     
+── Conflicts ────────────────────────────────────────── tidyverse_conflicts() ──
+✖ dplyr::filter() masks stats::filter()
+✖ dplyr::lag()    masks stats::lag()
+ℹ Use the conflicted package (<http://conflicted.r-lib.org/>) to force all conflicts to become errors
+Hoàn tất làm sạch dữ liệu
+Raw rows: 2960
+Removed zero-volume rows: 173
+Repaired OHLC rows after volume filter: 1
+Clean rows: 2787
+Period: 2015-01-05 to 2026-06-08
+
+=== Running R/02_visualization.R ===
+
+Attaching package: 'scales'
+
+The following object is masked from 'package:purrr':
+
+    discard
+
+The following object is masked from 'package:readr':
+
+    col_factor
+
+Đã xuất bảng và 9 biểu đồ vào output/.
+
+=== Running R/03_stationarity_arima_ets.R ===
+Loading required package: zoo
+
+Attaching package: 'zoo'
+
+The following objects are masked from 'package:base':
+
+    as.Date, as.Date.numeric
+
+
+=== Running R/04_garch_volatility.R ===
+GARCH input: 2786 returns from 2015-01-06 to 2026-06-08
+Fitting sGARCH-Normal...
+Fitting sGARCH-Student-t...
+Fitting eGARCH-Student-t...
+Fitting gjrGARCH-Student-t...
+# A tibble: 4 × 10
+  model      variance_model distribution status convergence log_likelihood   aic
+  <chr>      <chr>          <chr>        <chr>        <int>          <dbl> <dbl>
+1 gjrGARCH-… gjrGARCH       std          conve…           0          7855. -5.63
+2 eGARCH-St… eGARCH         std          conve…           0          7853. -5.63
+3 sGARCH-St… sGARCH         std          conve…           0          7850. -5.63
+4 sGARCH-No… sGARCH         norm         conve…           0          7676. -5.51
+# ℹ 3 more variables: bic <dbl>, persistence <dbl>, error <chr>
+Completed GARCH framework: 4/4 models fitted.
+Pre-fit ARCH-LM p-value: 1.093459e-38
+# A tibble: 4 × 10
+  model         convergence persistence ljung_box_residual_p ljung_box_squared_p
+  <chr>               <dbl>       <dbl>                <dbl>               <dbl>
+1 sGARCH-Normal           0       0.965                0.817               0.881
+2 sGARCH-Stude…           0       0.989                0.859               0.783
+3 eGARCH-Stude…           0       0.963                0.877               0.842
+4 gjrGARCH-Stu…           0       0.986                0.868               0.632
+# ℹ 5 more variables: arch_lm_p <dbl>, sign_bias_joint_p <dbl>,
+#   nyblom_joint <dbl>, nyblom_5pct_critical <dbl>, pearson_group20_p <dbl>
+
+=== Running R/05_model_comparison.R ===
+Exported separate price and volatility comparison tables.
+# A tibble: 2 × 3
+  analysis               provisional_conclusion                       limitation
+  <chr>                  <chr>                                        <chr>     
+1 Price forecast         Holdout leader: ARIMAX (Lagged); rolling-CV… Holdout a…
+2 Conditional volatility Provisional candidate: eGARCH-Student-t      Results a…
+
+=== Running R/06_export_report_tables.R ===
+[1] "--- Khởi tạo quá trình tổng hợp báo cáo Excel ---"
+[1] "--- HOÀN THÀNH TẤT CẢ MODULE CODE! ---"
+[1] "Toàn bộ các bảng số liệu đã được gộp thành Excel tại: output/tables/report_tables.xlsx"
+[1] "Giờ đây bạn chỉ cần mở file Excel này lên và bôi đen copy thẳng vào báo cáo Word cuối kỳ."
+
+=== Rendering report/report.docx ===
+Pipeline completed: 2026-06-20 10:43:23 
