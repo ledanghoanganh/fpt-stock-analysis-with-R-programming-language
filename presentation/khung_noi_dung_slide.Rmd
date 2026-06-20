@@ -1,5 +1,5 @@
 ---
-title: "Khung nội dung PowerPoint - Phân tích chuỗi thời gian cổ phiếu FPT"
+title: "Phân tích chuỗi thời gian và dự báo cổ phiếu FPT"
 subtitle: "Lập trình R cho phân tích - Nhóm 01 | Giảng viên: TS. Phan Thị Thể"
 author: |
   Trần Thiên Lực - 24133037  
@@ -14,180 +14,296 @@ output:
 lang: vi
 ---
 
-# Cách dùng tài liệu
+# Hướng dẫn sử dụng tài liệu
 
-Tài liệu này là khung để nhóm dựng PowerPoint cuối. Mỗi mục cấp hai tương ứng
-một slide. Không chép nguyên đoạn văn lên slide: giữ tối đa 4-6 bullet, dùng
-font tối thiểu 24 pt và ưu tiên biểu đồ. Mọi con số phải lấy từ các CSV trong
-`output/tables` sau lần chạy cuối.
+Tài liệu này là **khung nội dung** để nhóm dựng PowerPoint (`.pptx`) trình bày
+trước giảng viên. Mỗi mục cấp hai (`##`) tương ứng **một slide**.
 
-Thời lượng đề xuất: 10-12 phút trình bày và 3-5 phút trả lời câu hỏi.
+**Nguyên tắc khi dựng PPT:**
+
+- Tối đa 4-6 bullet mỗi slide; font tối thiểu 24 pt.
+- Ưu tiên biểu đồ và bảng; không chép nguyên đoạn văn.
+- Mọi con số phải lấy từ CSV trong `output/tables` sau lần chạy pipeline cuối.
+- **Người nào làm phần nào thì báo cáo phần đó** (yêu cầu rubric).
+
+**Thời lượng:** 10-12 phút trình bày, 3-5 phút trả lời câu hỏi.
+
+**Yêu cầu nộp bài (rubric):**
+
+- File Word (`report/report.docx`).
+- File PowerPoint (`.pptx`).
+- Toàn bộ project code.
+- Bảng phân công công việc, thời gian và mức độ hoàn thành (**phải in ra**).
 
 # Khung slide
 
-## Slide 1 - Trang bìa
+## Slide 1 — Trang bìa
 
-**Tiêu đề:** Dự báo giá và phân tích biến động cổ phiếu FPT bằng mô hình chuỗi thời gian.
+**Tiêu đề:** Phân tích chuỗi thời gian và dự báo cổ phiếu FPT bằng R.
 
-**Thông tin:**
+**Thông tin bắt buộc:**
 
-- Trần Thiên Lực - MSSV 24133037
-- Nguyễn Đức Học - MSSV 24162039
-- Lê Đặng Hoàng Anh - MSSV 24162006
+- Trần Thiên Lực — MSSV 24133037
+- Nguyễn Đức Học — MSSV 24162039
+- Lê Đặng Hoàng Anh — MSSV 24162006
 - Môn học: Lập trình R cho phân tích
 - Nhóm: 01
 - Giảng viên: TS. Phan Thị Thể
 
-**Người nói:** Lê Đặng Hoàng Anh. Giới thiệu nhóm và mục tiêu trong 20-30 giây.
+**Người nói:** ... — giới thiệu nhóm và mục tiêu (~30 giây).
 
-## Slide 2 - Bài toán và câu hỏi nghiên cứu
-
-**Nội dung trên slide:**
-
-- Dự báo mức giá đóng cửa bằng benchmark và mô hình chuỗi thời gian.
-- Mô hình hóa conditional volatility của log return.
-- Mô hình phức tạp có cải thiện ngoài mẫu so với Naive/Drift không?
-- Student-t và cấu trúc bất đối xứng có cải thiện GARCH-Normal không?
-
-**Điểm cần nói:** Forecast giá và forecast rủi ro là hai bài toán khác nhau.
-
-## Slide 3 - Nguồn và quy trình dữ liệu
+## Slide 2 — Ngữ cảnh bài toán và mục tiêu *(Rubric: Demo ngữ cảnh)*
 
 **Nội dung trên slide:**
 
-- Yahoo Finance, mã `FPT.VN`, `auto_adjust = TRUE`.
-- Dữ liệu thô: 2.960 dòng; dữ liệu sạch: 2.787 dòng.
-- Giai đoạn dữ liệu sạch: 2015-01-05 đến 2026-06-08.
-- Loại 173 dòng `volume = 0`; còn 2.786 log return hợp lệ.
+- **Ngữ cảnh:** Cổ phiếu FPT là một trong những mã blue-chip trên sàn HOSE với
+  lịch sử giao dịch dài và thanh khoản cao. Phân tích chuỗi thời gian giúp hiểu
+  hành vi giá và mức độ biến động.
+- **Hai bài toán nghiên cứu:**
+  - *Bài toán A:* Dự báo mức giá đóng cửa — mô hình phức tạp có cải thiện so
+    với Naive (random walk) không?
+  - *Bài toán B:* Mô hình hóa conditional volatility — Student-t và bất đối xứng
+    có cải thiện GARCH-Normal không?
+- **Lưu ý:** Hai bài toán khác response, đơn vị và metric nên không xếp hạng chung.
 
-**Sơ đồ nên vẽ:** Notebook -> Cleaning -> EDA -> Forecast -> GARCH -> Report.
+**Người nói:** Lê Đặng Hoàng Anh.
+
+---
+
+*Chuyển sang phần của Người 1 — Trần Thiên Lực: "Tiếp theo, bạn Lực sẽ trình
+bày về nguồn dữ liệu và quá trình phân tích dữ liệu."*
+
+---
+
+## Slide 3 — Nguồn dữ liệu và quá trình phân tích *(Rubric: Demo quá trình phân tích dữ liệu)*
+
+**Nội dung trên slide:**
+
+- Nguồn: Yahoo Finance, ticker `FPT.VN`, `auto_adjust = TRUE`.
+- Dữ liệu thô: **2.960 dòng** OHLCV (01/2015 – 06/2026).
+- Dữ liệu sạch: **2.787 dòng** (loại 173 dòng `volume = 0`).
+- Giai đoạn: 2015-01-05 đến 2026-06-08.
+
+**Sơ đồ quá trình phân tích (nên vẽ trên PPT):**
+
+```
+Notebook thu thập → Làm sạch & kiểm tra → EDA & trực quan hóa
+    → Kiểm định tính dừng → Mô hình dự báo giá → Mô hình GARCH
+    → So sánh & diagnostics → Báo cáo Word
+```
 
 **Người nói:** Trần Thiên Lực.
 
-## Slide 4 - Kiểm tra chất lượng và biến phân tích
+## Slide 4 — Kiểm tra chất lượng và tạo biến *(Người 1 trình bày)*
 
 **Nội dung trên slide:**
 
-- Không còn ngày trùng, giá không dương hoặc volume không hợp lệ.
-- OHLC dùng tolerance `1e-8`; chuẩn hóa một dòng bất thường thực sự.
-- `log_close = log(close)`.
-- `return_t = log(close_t) - log(close_(t-1))`.
+- Fatal checks: không ngày trùng, không giá ≤ 0, không volume âm → tất cả đạt.
+- Tolerance `1e-8` cho quan hệ OHLC → chỉ 1 dòng cần chuẩn hóa.
+- Tạo biến phân tích:
+  - `log_close = log(close)`
+  - `return = log(close_t) − log(close_{t−1})` → 2.786 log return hợp lệ.
+- Không fit GARCH trực tiếp trên mức giá vì giá không dừng.
 
-**Điểm cần nói:** Không fit GARCH trực tiếp trên mức giá.
+**Bảng nguồn:** `output/tables/data_quality_report.csv`.
 
-## Slide 5 - Diễn biến giá và lợi suất
+**Người nói:** Trần Thiên Lực.
+
+## Slide 5 — Trực quan hóa: Diễn biến giá và lợi suất *(Người 1 trình bày)*
 
 **Hình cần chèn:**
 
-- `output/figures/close_price.png`
-- Có thể bổ sung `output/figures/returns.png` nếu còn chỗ.
+- `output/figures/close_price.png` — diễn biến giá đóng cửa.
+- `output/figures/returns.png` — chuỗi log return.
 
-**Thông điệp:** Giá có xu hướng dài hạn; return dao động quanh mức gần 0 và có
-các giai đoạn biên độ lớn tập trung.
+**Thông điệp cần nói:**
 
-## Slide 6 - Phân phối và volatility clustering
+- Giá có xu hướng tăng dài hạn → gợi ý non-stationarity (cần kiểm định ADF).
+- Return dao động quanh 0, có giai đoạn biên độ lớn tập trung theo cụm
+  → gợi ý volatility clustering.
 
-**Hình cần chèn:**
+**Người nói:** Trần Thiên Lực.
 
-- `output/figures/return_distribution.png`
-- `output/figures/qqplot_return.png`
-- hoặc `output/figures/squared_returns.png`
+## Slide 6 — Trực quan hóa: Phân phối return và volatility clustering *(Người 1 trình bày)*
 
-**Thông điệp:** Return có heavy tails và volatility clustering, tạo động cơ thử
-Student-t và mô hình phương sai có điều kiện.
+**Hình cần chèn (chọn 2-3):**
 
-## Slide 7 - Tính dừng và ARCH effect
+- `output/figures/return_distribution.png` — histogram vs Normal.
+- `output/figures/qqplot_return.png` — QQ plot.
+- `output/figures/squared_returns.png` — squared returns theo cụm.
+
+**Thông điệp cần nói:**
+
+- Return có heavy tails (đuôi dày hơn phân phối chuẩn) → động cơ dùng Student-t
+  trong GARCH.
+- Squared returns có spike theo cụm → variance thay đổi theo thời gian.
+
+**Người nói:** Trần Thiên Lực.
+
+*Câu chuyển sang Người 2:* "EDA cho thấy giá có trend và return có đặc điểm khác
+mức giá. Vì vậy phần tiếp theo bạn Học sẽ kiểm định tính dừng trước khi chọn mô
+hình phù hợp."
+
+---
+
+*Chuyển sang phần của Người 2 — Nguyễn Đức Học.*
+
+---
+
+## Slide 7 — Kiểm định tính dừng (ADF) *(Người 2 trình bày)*
 
 **Nội dung trên slide:**
 
-- ADF H0: chuỗi có unit root, không dừng.
-- `close`: p-value 0,6676; chưa bác bỏ H0.
-- `log_close`: p-value 0,8665; chưa bác bỏ H0.
-- `return`: p-value <= 0,01; bác bỏ H0.
-- ARCH-LM trước GARCH có p-value rất nhỏ.
+- ADF: H₀ = chuỗi có unit root (không dừng); H₁ = chuỗi dừng.
 
-**Người nói:** Nguyễn Đức Học trình bày ADF; Lê Đặng Hoàng Anh nối sang ARCH.
+| Chuỗi | ADF statistic | p-value | Kết luận (5%) |
+|---|---:|---:|---|
+| `close` | −1,7892 | 0,6676 | Chưa bác bỏ H₀ |
+| `log_close` | −1,3194 | 0,8665 | Chưa bác bỏ H₀ |
+| `return` | −13,7914 | ≤ 0,01 | Bác bỏ H₀ → dừng |
 
-## Slide 8 - Thiết kế đánh giá forecast
+- Return dừng → phù hợp làm input cho GARCH.
+- Giá không dừng → dùng trực tiếp cho mô hình forecast.
+
+**Bảng nguồn:** `output/tables/stationarity_tests.csv`.
+
+**Người nói:** Nguyễn Đức Học.
+
+## Slide 8 — Giới thiệu mô hình và thuật toán dự báo giá *(Rubric: Giới thiệu mô hình, thuật toán)*
 
 **Nội dung trên slide:**
 
-- Holdout 30 phiên và rolling-origin cross-validation.
-- Benchmark: Naive và Drift.
-- Model: ARIMA, SARIMA, ETS, ETS Damped, ARIMAX Lagged.
-- Metric: RMSE, MAE và MAPE; bổ sung residual diagnostics.
-- Không chọn model chỉ bằng AIC/BIC hoặc một cửa sổ test.
+| Nhóm | Mô hình | Thuật toán / Ý tưởng |
+|---|---|---|
+| Benchmark | Naive | Giá mai = giá hôm nay |
+| Benchmark | Drift | Random walk có độ trôi trung bình |
+| Box-Jenkins | ARIMA | Tự hồi quy + sai phân + trung bình trượt |
+| Box-Jenkins | SARIMA | ARIMA + thành phần mùa vụ (chu kỳ 5 ngày) |
+| Exponential Smoothing | ETS | State-space: Error-Trend-Seasonality |
+| Exponential Smoothing | ETS Damped | ETS với xu hướng tắt dần |
+| Biến ngoại sinh | ARIMAX Lagged | ARIMA + lag volume, lag range, lag return |
 
-## Slide 9 - Kết quả forecast
+- Thiết kế đánh giá: holdout 30 phiên + rolling-origin CV (27 folds, horizon 20).
+- Metric: RMSE, MAE, MAPE + Ljung-Box residual diagnostics.
 
-**Bảng nguồn:** `output/tables/forecast_metrics.csv`.
+**Người nói:** Nguyễn Đức Học.
 
-**Số chính:**
+## Slide 9 — Đánh giá hiệu suất mô hình dự báo giá *(Rubric: Đánh giá hiệu suất mô hình)*
 
-- Holdout leader: ETS Damped, RMSE 1.939,13; MAPE 2,10%.
-- ETS Damped chỉ hơn Naive khoảng 0,72 RMSE trên holdout.
-- Rolling-CV leader: Naive, mean RMSE 5.353,94.
-- Tất cả fitted models còn residual autocorrelation ở mức 5%.
-- ARIMAX/SARIMA chưa có cùng rolling-CV coverage.
+**Bảng nguồn:** `output/tables/price_forecast_comparison.csv`.
+
+**Kết quả holdout (30 phiên):**
+
+| Model | RMSE | MAPE |
+|---|---:|---:|
+| **ETS Damped** | **1.939,13** | **2,10%** |
+| Naive | 1.939,85 | 2,11% |
+| SARIMA | 1.983,50 | 2,19% |
+| ETS | 1.986,72 | 2,08% |
+| Drift | 2.020,67 | 2,23% |
+| ARIMAX | 2.025,86 | 2,24% |
+| ARIMA | 2.119,63 | 2,38% |
+
+**Kết quả rolling-CV:** Naive dẫn đầu (mean RMSE 5.353,94); ETS Damped rất sát
+(5.404,76). Tất cả fitted models còn residual autocorrelation.
+
+**Kết luận:** Chưa có bằng chứng model phức tạp cải thiện Naive ổn định.
 
 **Hình:** `output/figures/ets_damped_forecast.png`.
 
 **Người nói:** Nguyễn Đức Học.
 
-## Slide 10 - Các mô hình GARCH
+*Câu chuyển sang Người 3:* "Forecast model tập trung vào conditional mean của giá.
+Tuy nhiên squared returns cho thấy độ bất định cũng thay đổi theo thời gian, nên
+nhóm tách riêng bài toán conditional variance bằng GARCH."
+
+---
+
+*Chuyển sang phần của Người 3 — Lê Đặng Hoàng Anh.*
+
+---
+
+## Slide 10 — Giới thiệu mô hình và thuật toán GARCH *(Rubric: Giới thiệu mô hình, thuật toán)*
 
 **Nội dung trên slide:**
 
-- sGARCH(1,1)-Normal: baseline đối xứng.
-- sGARCH(1,1)-Student-t: xử lý heavy tails.
-- eGARCH(1,1)-Student-t: log variance và asymmetry.
-- GJR-GARCH(1,1)-Student-t: phản ứng khác nhau với shock âm.
-- Cả bốn model dùng cùng 2.786 returns và ARMA(0,0) mean equation.
+- ARCH-LM trước fit: p ≈ 1,09 × 10⁻³⁸ → bác bỏ H₀ → có ARCH effect mạnh.
 
-## Slide 11 - Kết quả và lựa chọn GARCH
+| Mô hình | Distribution | Ý tưởng chính |
+|---|---|---|
+| sGARCH(1,1) | Normal | Baseline đối xứng |
+| sGARCH(1,1) | Student-t | Xử lý heavy tails |
+| eGARCH(1,1) | Student-t | Log variance + bất đối xứng |
+| GJR-GARCH(1,1) | Student-t | Indicator cho shock âm |
+
+- Cả 4 model dùng cùng 2.786 returns, mean equation ARMA(0,0).
+- Phương trình sGARCH: σ²ₜ = ω + α·ε²ₜ₋₁ + β·σ²ₜ₋₁
+
+**Người nói:** Lê Đặng Hoàng Anh.
+
+## Slide 11 — Đánh giá hiệu suất mô hình GARCH *(Rubric: Đánh giá hiệu suất mô hình)*
 
 **Bảng nguồn:** `output/tables/volatility_model_comparison.csv`.
 
-**Thông điệp:**
+| Model | AIC | Persistence | Core diag. | Nyblom stable? |
+|---|---:|---:|---|---|
+| GJR-GARCH-t | **−5,6344** | 0,9857 | Đạt | ❌ Không |
+| eGARCH-t | −5,6331 | 0,9627 | Đạt | ✅ Có |
+| sGARCH-t | −5,6317 | 0,9891 | Đạt | ❌ Không |
+| sGARCH-N | −5,5073 | 0,9645 | Đạt | ❌ Không |
 
-- GJR có AIC nhỏ nhất (-5,6344) nhưng Nyblom bác bỏ stability.
-- eGARCH có AIC -5,6331 và đạt core diagnostics cùng joint stability.
-- eGARCH Student-t là lựa chọn cân bằng, không phải model hoàn hảo.
-- Pearson GOF bác bỏ distribution fit ở cả bốn specification.
+**Lựa chọn:** eGARCH-Student-t là **ứng viên cân bằng** vì:
+
+- AIC chỉ kém GJR khoảng 0,00137.
+- Core residual diagnostics đạt + Nyblom stability đạt.
+- Tuy nhiên Pearson GOF bác bỏ distribution fit → đây là hạn chế.
 
 **Hình:** `output/figures/garch_model_comparison.png`.
 
 **Người nói:** Lê Đặng Hoàng Anh.
 
-## Slide 12 - Hạn chế
+## Slide 12 — Hạn chế và hướng phát triển
 
 **Nội dung trên slide:**
 
-- Holdout ngắn và kết quả chưa đồng nhất với rolling CV.
-- ARIMAX/SARIMA chưa có CV cùng coverage.
-- Ba specification GARCH không đạt joint stability.
-- Chưa đánh giá volatility forecast ngoài mẫu hoặc VaR backtest.
-- Kết quả không phải khuyến nghị đầu tư và không chứng minh nhân quả.
+- Holdout ngắn (30 phiên); holdout và rolling-CV chưa đồng nhất.
+- ARIMAX/SARIMA chưa có CV cùng coverage để so sánh công bằng.
+- 3/4 GARCH không đạt Nyblom joint stability; Pearson GOF bác bỏ ở cả 4.
+- Chưa đánh giá volatility forecast ngoài mẫu (VaR backtest).
+- **Kết quả phục vụ học thuật, không phải khuyến nghị đầu tư.**
 
-## Slide 13 - Kết luận
+**Hướng phát triển:** Rolling CV cho tất cả models, VaR backtest, thử skewed-t/GED.
+
+**Người nói:** Lê Đặng Hoàng Anh.
+
+## Slide 13 — Kết luận
 
 **Nội dung trên slide:**
 
-- Giá không dừng; log return dừng và có ARCH effect.
-- ETS Damped dẫn holdout rất sát Naive; Naive dẫn rolling CV.
-- Chưa có model phức tạp cải thiện benchmark một cách ổn định.
-- Student-t cải thiện fit rõ so với Normal.
-- eGARCH Student-t cân bằng tốt nhất giữa fit, diagnostics và stability.
-- Pipeline R tạo lại dữ liệu, bảng, hình và báo cáo từ đầu.
+1. Giá không dừng; log return dừng và có ARCH effect.
+2. ETS Damped dẫn holdout rất sát Naive; Naive dẫn rolling-CV.
+3. Chưa có model phức tạp cải thiện benchmark một cách ổn định.
+4. Student-t cải thiện fit rõ rệt so với Normal.
+5. eGARCH-Student-t cân bằng tốt nhất giữa fit, diagnostics và stability.
+6. Pipeline R tái lập được toàn bộ: dữ liệu → bảng → hình → báo cáo Word.
 
-## Slide 14 - Đóng góp và cảm ơn
+**Người nói:** Lê Đặng Hoàng Anh.
 
-**Nội dung:**
+## Slide 14 — Bảng phân công công việc *(Rubric: Phải in bảng phân công)*
 
-- Trần Thiên Lực (30%): data provenance, cleaning, quality checks và EDA.
-- Nguyễn Đức Học (35%): forecast, benchmark, rolling CV và diagnostics.
-- Lê Đặng Hoàng Anh (35%): GARCH, comparison, báo cáo và điều phối slide.
-- Cảm ơn giảng viên và mời đặt câu hỏi.
+> **LƯU Ý:** Bảng này **phải in ra giấy** để nộp kèm bài báo cáo theo yêu cầu
+> rubric. Đồng thời chiếu trên slide khi kết thúc phần trình bày.
+
+| Thành viên | MSSV | Tỷ lệ | Phân công công việc chi tiết | Thời gian thực hiện | Mức độ hoàn thành |
+|---|---|---:|---|---|---:|
+| Trần Thiên Lực | 24133037 | 30% | Thu thập dữ liệu Yahoo Finance, làm sạch (`01_data_cleaning.R`), kiểm tra chất lượng, trực quan hóa EDA (`02_visualization.R`) — 9 biểu đồ | 15/06 – 19/06/2026 | 100% |
+| Nguyễn Đức Học | 24162039 | 35% | Kiểm định ADF, dự báo giá: Naive, Drift, ARIMA, SARIMA, ETS, ETS Damped, ARIMAX (`03_stationarity_arima_ets.R`), rolling-origin CV, residual diagnostics | 15/06 – 19/06/2026 | 100% |
+| Lê Đặng Hoàng Anh | 24162006 | 35% | GARCH 4 specification (`04_garch_volatility.R`), model comparison (`05_model_comparison.R`), export tables (`06_export_report_tables.R`), tích hợp báo cáo Word, khung slide | 15/06 – 20/06/2026 | 100% |
+
+**Đánh giá chung:** Cả ba thành viên hoàn thành đúng tiến độ, phối hợp qua Git
+và review chéo PR.
+
+Cảm ơn giảng viên TS. Phan Thị Thể. Mời đặt câu hỏi.
 
 # Câu hỏi phản biện cần chuẩn bị
 
@@ -202,10 +318,20 @@ Student-t và mô hình phương sai có điều kiện.
 
 # Checklist trước khi xuất PowerPoint
 
-- [x] Đã bổ sung tên môn, nhóm và giảng viên.
+## Yêu cầu rubric
+
+- [ ] File PPT đã dựng xong và nộp cùng Word + project.
+- [ ] Bảng phân công công việc, thời gian, mức độ hoàn thành **đã in ra giấy**.
+- [ ] Mỗi thành viên tự trình bày phần mình làm (không đọc hộ).
+- [ ] Có demo ngữ cảnh bài toán (Slide 2).
+- [ ] Có demo quá trình phân tích dữ liệu (Slide 3-6).
+- [ ] Có giới thiệu mô hình sử dụng và thuật toán (Slide 8, 10).
+- [ ] Có đánh giá hiệu suất mô hình (Slide 9, 11).
+
+## Kiểm tra kỹ thuật
+
 - [ ] Dùng thống nhất font, màu và định dạng số thập phân.
 - [ ] Không để bảng hoặc hình tràn khỏi slide.
 - [ ] Chỉ dùng số từ CSV sau lần chạy pipeline cuối.
 - [ ] Ghi nguồn Yahoo Finance ở slide dữ liệu.
-- [ ] Mỗi thành viên tập phần nói và trả lời câu hỏi liên quan module của mình.
 - [ ] Giữ tổng thời lượng trong 10-12 phút.
