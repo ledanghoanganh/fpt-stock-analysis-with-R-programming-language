@@ -280,6 +280,7 @@ Chi tiết đóng góp và peer assessment được trình bày trong báo cáo.
 ## Tài liệu dự án
 
 - [Tài liệu tổng hợp toàn bộ dự án](docs/MASTER_DOCUMENTATION.md)
+- [Hướng dẫn học và bảo vệ dành riêng cho Người 3](docs/GUIDE_NGUOI_3.md)
 - [Rubric và yêu cầu](docs/rubric/)
 - [Lý thuyết nền tảng](docs/ly_thuyet_project.md)
 - [Phân công mô hình cải tiến](docs/phan_cong_mo_hinh_cai_tien.md)

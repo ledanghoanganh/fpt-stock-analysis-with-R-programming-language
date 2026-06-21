@@ -77,7 +77,7 @@ source("R/run_all.R")
 hoặc trong PowerShell:
 
 ```powershell
-& "C:\Program Files\R\R-4.6.0\bin\x64\Rscript.exe" R/run_all.R
+& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" -e "source('R/run_all.R')"
 ```
 
 ## 1.4 Nguyên tắc học
@@ -87,6 +87,42 @@ hoặc trong PowerShell:
 - Luôn phân biệt **mean forecast** với **volatility model**.
 - Không kết luận chỉ từ một p-value hoặc một metric.
 - Không đọc một con số tách khỏi sample, đơn vị và phương pháp tạo ra nó.
+
+## 1.5 Trạng thái chính thức của bản tài liệu này
+
+Tài liệu đã được đối chiếu với pipeline và output ngày **21/06/2026**. Lần chạy
+nghiệm thu cuối đã hoàn thành toàn bộ sáu module, fit 7 phương pháp dự báo giá,
+chạy 27 rolling-origin folds, fit 4 GARCH specification và render thành công hai
+tài liệu Word. File xác nhận là `output/pipeline_log.txt`.
+
+Không hiểu “hoàn thành” là mọi mô hình đều tốt. Hoàn thành nghĩa là code chạy
+đầu-cuối, kết quả được đánh giá đúng và các hạn chế được báo cáo trung thực.
+
+## 1.6 Bản đồ đọc nhanh theo nhu cầu
+
+| Khi cần làm việc này | Đọc phần | Mở file thực tế |
+|---|---:|---|
+| Hiểu dự án trong 10 phút | 2-3 | `README.md` |
+| Giải thích dữ liệu và biểu đồ | 5, 7-9, 20 | `R/01_data_cleaning.R`, `R/02_visualization.R` |
+| Giải thích ADF và forecast | 10-13, 21 | `R/03_stationarity_arima_ets.R` |
+| Giải thích GARCH và lựa chọn model | 14-16, 22 | `R/04_garch_volatility.R`, `R/05_model_comparison.R` |
+| Học riêng toàn bộ phần Người 3 | Tài liệu riêng | `docs/GUIDE_NGUOI_3.md` |
+| Chạy lại toàn bộ dự án | 19 | `R/run_all.R` |
+| Chuẩn bị thuyết trình | 23-24 | `presentation/khung_noi_dung_slide.docx` |
+| Kiểm tra con số cuối | 18, Phụ lục A | `output/tables/` |
+
+## 1.7 Từ câu hỏi đến bằng chứng
+
+| Câu hỏi | Bằng chứng chính |
+|---|---|
+| Dữ liệu có sạch không? | `data_quality_report.csv`, `missing_values.csv` |
+| Chuỗi nào dừng? | `stationarity_tests.csv` |
+| Model giá nào dẫn holdout/CV? | `price_forecast_comparison.csv` |
+| Residual forecast còn tự tương quan không? | `forecast_diagnostics.csv` |
+| Return có ARCH effect không? | `garch_diagnostics.csv` |
+| Vì sao chọn eGARCH-t? | `volatility_model_comparison.csv` |
+| Tham số eGARCH-t bằng bao nhiêu? | `garch_parameters.csv` |
+| Pipeline cuối có chạy xong không? | `pipeline_log.txt` |
 
 ---
 
@@ -1623,7 +1659,7 @@ source("R/run_all.R")
 Trong PowerShell:
 
 ```powershell
-& "C:\Program Files\R\R-4.6.0\bin\x64\Rscript.exe" R/run_all.R
+& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" -e "source('R/run_all.R')"
 ```
 
 ## 19.5 Chạy từng phần
@@ -2061,7 +2097,7 @@ Nguyên nhân: R không nằm trong PATH.
 Giải pháp PowerShell:
 
 ```powershell
-& "C:\Program Files\R\R-4.6.0\bin\x64\Rscript.exe" R/run_all.R
+& "C:\Program Files\R\R-4.6.0\bin\Rscript.exe" -e "source('R/run_all.R')"
 ```
 
 ## 25.2 Không tìm thấy file raw
@@ -2092,8 +2128,10 @@ Sys.setenv(
 
 ## 25.5 Pipeline log trống
 
-Có thể script chưa chạy qua `R/run_all.R`, bị dừng trước khi sink, hoặc đang xem
-nhầm file. Chạy entry point và kiểm tra timestamp.
+`R/run_all.R` lưu các mốc bắt đầu, sáu script, hai lần render và thời điểm hoàn
+thành bằng `writeLines()`. Nếu log trống, có thể đang chạy từng module riêng thay
+vì entry point, pipeline dừng trước bước ghi cuối, hoặc đang xem nhầm project.
+Chạy lại `source("R/run_all.R")` rồi kiểm tra dòng `Pipeline completed`.
 
 ## 25.6 GARCH không hội tụ
 
@@ -2224,7 +2262,8 @@ Rubric đánh giá sử dụng hợp lý, không chỉ số lượng tên model.
 ## 27.3 Slide
 
 - [ ] Dùng `presentation/khung_noi_dung_slide.docx` làm khung.
-- [ ] Không nhồi nguyên đoạn văn lên slide.
+- [ ] Mỗi slide chỉ giữ một đoạn đọc trực tiếp ngắn, khoảng 2-4 câu, không biến
+      toàn bộ slide thành một trang báo cáo.
 - [ ] Font tối thiểu 24 pt.
 - [ ] Hình có nhãn và nguồn.
 - [ ] Tổng thời lượng 10-12 phút.
@@ -2237,7 +2276,8 @@ Rubric đánh giá sử dụng hợp lý, không chỉ số lượng tên model.
 - [ ] Người 3 viết được GARCH equation và bảo vệ lựa chọn eGARCH.
 - [ ] Cả nhóm phân biệt forecast mean với volatility.
 - [ ] Cả nhóm nêu được ít nhất ba hạn chế.
-- [ ] Không đọc slide như văn bản.
+- [ ] Có thể nhìn và đọc các câu kết luận đã soạn, nhưng phải hiểu thuật ngữ để
+      giải thích lại khi giảng viên hỏi.
 
 ## 27.5 Git
 
