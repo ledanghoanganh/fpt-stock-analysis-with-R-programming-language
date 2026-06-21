@@ -10,18 +10,17 @@ require_packages(c(
   "openxlsx", "knitr", "rmarkdown"
 ))
 
-# Ghi cả console output và message vào log để audit lần chạy cuối.
+# Ghi các mốc chính vào log; on.exit vẫn lưu log nếu pipeline dừng giữa chừng.
 log_path <- file.path("output", "pipeline_log.txt")
-log_connection <- file(log_path, open = "wt", encoding = "UTF-8")
-sink(log_connection, type = "output", split = TRUE)
-sink(log_connection, type = "message")
-on.exit({
-  sink(type = "message")
-  sink(type = "output")
-  close(log_connection)
-}, add = TRUE)
+log_lines <- character()
+log_event <- function(...) {
+  line <- paste0(...)
+  log_lines <<- c(log_lines, line)
+  cat(line, "\n", sep = "")
+}
+on.exit(writeLines(log_lines, log_path, useBytes = TRUE), add = TRUE)
 options(warn = 1)
-cat("Pipeline started: ", format(Sys.time()), "\n", sep = "")
+log_event("Pipeline started: ", format(Sys.time()))
 
 # Thứ tự là dependency graph: mỗi script dùng output của script đứng trước.
 scripts <- sprintf("R/%02d_%s.R", 1:6, c(
@@ -29,7 +28,7 @@ scripts <- sprintf("R/%02d_%s.R", 1:6, c(
   "garch_volatility", "model_comparison", "export_report_tables"
 ))
 purrr::walk(scripts, function(script) {
-  cat("\n=== Running", script, "===\n")
+  log_event("Running: ", script)
   sys.source(script, envir = new.env(parent = globalenv()))
 })
 
@@ -49,9 +48,10 @@ render_targets <- tribble(
   "presentation/khung_noi_dung_slide.Rmd", "khung_noi_dung_slide.docx"
 )
 purrr::pwalk(render_targets, function(input, output) {
-  cat("\n=== Rendering", output, "===\n")
+  log_event("Rendering: ", output)
   rmarkdown::render(input, output_file = output,
                     knit_root_dir = normalizePath("."), quiet = TRUE)
 })
 
-cat("Pipeline completed: ", format(Sys.time()), "\n", sep = "")
+log_event("Pipeline completed: ", format(Sys.time()))
+writeLines(log_lines, log_path, useBytes = TRUE)

@@ -1,47 +1,10 @@
-Pipeline started: 2026-06-20 12:35:44
-
-=== Running R/01_data_cleaning.R ===
-Hoàn tất cleaning: 2960 raw -> 2787 clean; loại 173 zero-volume; sửa 1 OHLC row.
-
-=== Running R/02_visualization.R ===
-Đã xuất 2 bảng mô tả và 9 biểu đồ EDA.
-
-=== Running R/03_stationarity_arima_ets.R ===
-Hoàn tất forecast: 7 holdout models và 27 rolling-origin folds.
-
-=== Running R/04_garch_volatility.R ===
-GARCH input: 2786 returns from 2015-01-06 to 2026-06-08
-Fitting sGARCH-Normal...
-Fitting sGARCH-Student-t...
-Fitting eGARCH-Student-t...
-Fitting gjrGARCH-Student-t...
-# A tibble: 4 × 10
-  model      variance_model distribution status convergence log_likelihood   aic
-  <chr>      <chr>          <chr>        <chr>        <int>          <dbl> <dbl>
-1 gjrGARCH-… gjrGARCH       std          conve…           0          7855. -5.63
-2 eGARCH-St… eGARCH         std          conve…           0          7853. -5.63
-3 sGARCH-St… sGARCH         std          conve…           0          7850. -5.63
-4 sGARCH-No… sGARCH         norm         conve…           0          7676. -5.51
-# ℹ 3 more variables: bic <dbl>, persistence <dbl>, error <chr>
-Completed GARCH framework: 4/4 models fitted.
-Pre-fit ARCH-LM p-value: 1.093459e-38
-# A tibble: 4 × 10
-  model         convergence persistence ljung_box_residual_p ljung_box_squared_p
-  <chr>               <dbl>       <dbl>                <dbl>               <dbl>
-1 sGARCH-Normal           0       0.965                0.817               0.881
-2 sGARCH-Stude…           0       0.989                0.859               0.783
-3 eGARCH-Stude…           0       0.963                0.877               0.842
-4 gjrGARCH-Stu…           0       0.986                0.868               0.632
-# ℹ 5 more variables: arch_lm_p <dbl>, sign_bias_joint_p <dbl>,
-#   nyblom_joint <dbl>, nyblom_5pct_critical <dbl>, pearson_group20_p <dbl>
-
-=== Running R/05_model_comparison.R ===
-Đã xuất comparison riêng cho forecast và volatility.
-
-=== Running R/06_export_report_tables.R ===
-Đã xuất workbook: output/tables/report_tables.xlsx
-
-=== Rendering report.docx ===
-
-=== Rendering khung_noi_dung_slide.docx ===
-Pipeline completed: 2026-06-20 12:36:58
+Pipeline started: 2026-06-21 09:47:33
+Running: R/01_data_cleaning.R
+Running: R/02_visualization.R
+Running: R/03_stationarity_arima_ets.R
+Running: R/04_garch_volatility.R
+Running: R/05_model_comparison.R
+Running: R/06_export_report_tables.R
+Rendering: report.docx
+Rendering: khung_noi_dung_slide.docx
+Pipeline completed: 2026-06-21 09:49:39

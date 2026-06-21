@@ -14,6 +14,7 @@ Thumbs.db
 # Personal learning notes and local-only helper scripts
 .agents/
 local_docs/
+.tmp_person3_slides
 
 # Regenerated local model bundle; final tables/figures are committed separately
 output/models/garch_fits.rds

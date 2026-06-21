@@ -41,10 +41,12 @@ Snapshot hiện tại đã có:
 - Hai bảng so sánh độc lập cho forecast-price và volatility.
 - Báo cáo R Markdown đủ cấu trúc rubric và file Word đã render.
 
-### Việc phải khóa trước bản nộp cuối
+### Trạng thái nghiệm thu cuối
 
-- Đối chiếu lại mọi số trong Word và slide với CSV mới nhất.
-- Điền tên thật, mã sinh viên, contributions và peer assessment đã thống nhất.
+- Pipeline đầu-cuối đã chạy thành công ngày 21/06/2026 bằng R 4.6.0.
+- Toàn bộ CSV, hình, workbook và model đã được tái sinh từ dữ liệu hiện tại.
+- `report/report.docx` và `presentation/khung_noi_dung_slide.docx` đã render thành công.
+- Thông tin thành viên, MSSV, tỷ lệ đóng góp và Nhóm 06 đã được tích hợp.
 
 Data handoff đã hoàn tất: notebook, raw CSV và tài liệu cùng dùng Yahoo Finance
 (`FPT.VN`); 173 dòng `volume = 0` đã bị loại trước khi mô hình hóa.
@@ -172,11 +174,12 @@ Xem [`output/tables/volatility_model_comparison.csv`](output/tables/volatility_m
 │   ├── report.docx
 │   └── sections/                 # Bản chương tham khảo; report.Rmd đã tích hợp đầy đủ
 └── docs/
-    ├── guide.md
-    ├── guide_nguoi_1.md
+    ├── MASTER_DOCUMENTATION.md
     ├── ke_hoach_nguoi_2_3_hom_nay.md
     ├── ly_thuyet_project.md
     ├── phan_cong_mo_hinh_cai_tien.md
+    ├── phan_cong_sau_data_handoff.md
+    ├── PR_Person2.md
     └── rubric/
 ```
 

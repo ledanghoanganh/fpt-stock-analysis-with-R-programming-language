@@ -223,11 +223,72 @@ nhóm tách riêng bài toán conditional variance bằng GARCH."
 
 ---
 
-## Slide 10 — Giới thiệu mô hình và thuật toán GARCH *(Rubric: Giới thiệu mô hình, thuật toán)*
+## Slide 10 — Từ return đến bài toán conditional volatility
 
 **Nội dung trên slide:**
 
-- ARCH-LM trước fit: p ≈ 1,09 × 10⁻³⁸ → bác bỏ H₀ → có ARCH effect mạnh.
+- Forecast giá trả lời **mức giá kỳ vọng**; GARCH trả lời **mức biến động có điều kiện**.
+- Log return: `rₜ = log(Pₜ) − log(Pₜ₋₁)`; chuỗi dừng theo ADF.
+- Return dao động quanh 0 nhưng `rₜ²` xuất hiện theo cụm lớn/nhỏ → volatility clustering.
+- ARCH-LM: H₀ = không có ARCH effect; p ≈ 1,09 × 10⁻³⁸ → bác bỏ H₀.
+- **Quyết định:** dùng 2.786 log returns để mô hình hóa variance thay đổi theo thời gian.
+
+**Hình:** `output/figures/squared_returns.png` hoặc ACF squared return.
+
+**Lời thoại gợi ý (~35 giây):**
+
+> Phần dự báo trước tập trung vào conditional mean. Phần của em giải quyết một
+> câu hỏi khác: độ bất định của return thay đổi như thế nào theo thời gian. Return
+> đã dừng nhưng bình phương return tạo thành các cụm, và ARCH-LM có p-value cực
+> nhỏ. Vì vậy giả định variance cố định không phù hợp, đây là cơ sở để dùng GARCH.
+
+**Người nói:** Lê Đặng Hoàng Anh.
+
+## Slide 11 — Lý thuyết nền tảng của GARCH(1,1) *(Rubric: Giới thiệu mô hình, thuật toán)*
+
+**Nội dung trên slide:**
+
+\[
+r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t
+\]
+
+\[
+\sigma_t^2=\omega+\alpha\epsilon_{t-1}^2+\beta\sigma_{t-1}^2
+\]
+
+| Ký hiệu | Ý nghĩa trong dự án |
+|---|---|
+| `μ` | Conditional mean của log return |
+| `εₜ` | Shock return ngoài dự kiến, **không phải sai số giá** |
+| `σₜ` | Conditional volatility tại phiên `t` |
+| `zₜ` | Standardized innovation, có mean 0 và variance 1 |
+| `ω` | Mức variance nền trong phương trình sGARCH |
+| `α` | Mức phản ứng với shock mới |
+| `β` | Mức ghi nhớ volatility quá khứ |
+| `α + β` | Persistence của sGARCH; gần 1 nghĩa là shock tiêu tan chậm |
+
+**Đoạn có thể đặt trực tiếp trên slide để nhìn và đọc:**
+
+> GARCH không dự báo trực tiếp giá cổ phiếu mà ước lượng mức biến động có điều
+> kiện của log return. Volatility hôm nay được cập nhật từ shock mới và volatility
+> trong quá khứ; vì vậy mô hình phù hợp với hiện tượng biến động tập trung theo cụm.
+
+> Khi dựng PowerPoint, đổi tiêu đề slide này thành **“Lý thuyết nền tảng của
+> GARCH(1,1)”** và bỏ toàn bộ năm bullet đã xuất hiện ở slide trước.
+
+**Lời thoại gợi ý (~50 giây):**
+
+> Return được tách thành mean và innovation. Innovation bằng volatility có điều
+> kiện nhân standardized shock. Trong variance equation, omega là nền dài hạn,
+> alpha đo phản ứng với tin mới qua bình phương shock hôm trước, còn beta đo trí
+> nhớ của variance hôm trước. Với sGARCH, alpha cộng beta gần 1 cho thấy tác động
+> volatility tồn tại lâu. Công thức cộng này không áp dụng máy móc cho eGARCH.
+
+**Người nói:** Lê Đặng Hoàng Anh.
+
+## Slide 12 — Vì sao nhóm thử bốn specification?
+
+**Nội dung trên slide:**
 
 | Mô hình | Distribution | Ý tưởng chính |
 |---|---|---|
@@ -236,12 +297,63 @@ nhóm tách riêng bài toán conditional variance bằng GARCH."
 | eGARCH(1,1) | Student-t | Log variance + bất đối xứng |
 | GJR-GARCH(1,1) | Student-t | Indicator cho shock âm |
 
-- Cả 4 model dùng cùng 2.786 returns, mean equation ARMA(0,0).
-- Phương trình sGARCH: σ²ₜ = ω + α·ε²ₜ₋₁ + β·σ²ₜ₋₁
+- **Normal → Student-t:** histogram và Q-Q plot cho thấy return có heavy tails.
+- **Đối xứng → bất đối xứng:** shock âm và dương có thể tác động khác nhau đến volatility.
+- Cả bốn dùng cùng response, sample và ARMA(0,0) → AIC/BIC mới so sánh được.
+
+**Đoạn có thể đặt trực tiếp trên slide để nhìn và đọc:**
+
+> Bốn specification được chọn theo từng bước có chủ đích. Nhóm bắt đầu bằng
+> sGARCH-Normal làm baseline, chuyển sang Student-t vì return có đuôi dày, sau đó
+> thử eGARCH và GJR-GARCH để kiểm tra phản ứng bất đối xứng của volatility.
+
+> Kiểm tra lại nhãn trong PowerPoint: phải viết **GJR-GARCH(1,1)**, không viết
+> `GJR-GARCH(11)`.
+
+**Hình:** `output/figures/garch_news_impact.png`.
+
+**Lời thoại gợi ý (~45 giây):**
+
+> Em không thử model tùy ý. sGARCH-Normal là baseline. Do dữ liệu có đuôi dày,
+> em thay Normal bằng Student-t. Sau đó em thử eGARCH và GJR để biểu diễn phản ứng
+> bất đối xứng trước shock âm và dương. Em giữ nguyên sample và mean equation để
+> việc so AIC, BIC giữa bốn model có ý nghĩa.
 
 **Người nói:** Lê Đặng Hoàng Anh.
 
-## Slide 11 — Đánh giá hiệu suất mô hình GARCH *(Rubric: Đánh giá hiệu suất mô hình)*
+## Slide 13 — Model GARCH được đánh giá bằng gì?
+
+**Nội dung trên slide:**
+
+| Nhóm tiêu chí | Câu hỏi cần trả lời |
+|---|---|
+| Convergence | Thuật toán tối ưu có hội tụ không? (`0` = đạt) |
+| AIC/BIC | Fit tương đối có tốt sau khi phạt độ phức tạp không? |
+| Ljung-Box residual | Mean dynamics còn bị bỏ sót không? |
+| Ljung-Box squared + ARCH-LM | ARCH effect còn sót sau fit không? |
+| Sign-bias | Còn phản ứng bất đối xứng chưa mô hình hóa không? |
+| Nyblom | Tham số có ổn định theo thời gian không? |
+| Pearson GOF | Distribution giả định có phù hợp không? |
+
+- Không chọn model chỉ vì AIC nhỏ nhất; cần cân bằng fit và diagnostics.
+- P-value ≥ 0,05 chỉ là **chưa bác bỏ H₀**, không chứng minh model hoàn hảo.
+
+**Đoạn có thể đặt trực tiếp trên slide để nhìn và đọc:**
+
+> Nhóm không chọn mô hình chỉ dựa vào AIC. Một mô hình phù hợp còn phải hội tụ,
+> loại bỏ dependence còn sót trong residual, có tham số tương đối ổn định và có
+> distribution phù hợp. Do đó kết luận được hình thành từ nhiều diagnostics.
+
+**Lời thoại gợi ý (~50 giây):**
+
+> AIC chỉ đo relative in-sample fit nên chưa đủ để chọn model. Em kiểm tra thêm
+> standardized residual, squared residual và ARCH-LM để xem dynamics còn sót hay
+> không; sign-bias cho bất đối xứng; Nyblom cho stability; Pearson cho distribution
+> fit. Quy tắc của nhóm là chọn model cân bằng, không chạy theo AIC thấp nhất.
+
+**Người nói:** Lê Đặng Hoàng Anh.
+
+## Slide 14 — Kết quả và quyết định chọn eGARCH-Student-t *(Rubric: Đánh giá hiệu suất mô hình)*
 
 **Bảng nguồn:** `output/tables/volatility_model_comparison.csv`.
 
@@ -258,11 +370,60 @@ nhóm tách riêng bài toán conditional variance bằng GARCH."
 - Core residual diagnostics đạt + Nyblom stability đạt.
 - Tuy nhiên Pearson GOF bác bỏ distribution fit → đây là hạn chế.
 
+**Đoạn có thể đặt trực tiếp trên slide để nhìn và đọc:**
+
+> GJR-GARCH-t có AIC thấp nhất nhưng không đạt Nyblom joint stability.
+> eGARCH-t chỉ kém 0,00137 AIC, đồng thời đạt core diagnostics và Nyblom stability,
+> nên được chọn là ứng viên cân bằng. Đây không phải mô hình hoàn hảo vì Pearson
+> GOF vẫn bác bỏ distribution fit.
+
 **Hình:** `output/figures/garch_model_comparison.png`.
+
+**Câu kết luận phải đặt dưới biểu đồ volatility:**
+
+> Bốn mô hình nhận diện các giai đoạn volatility cao khá tương đồng, nhưng khác
+> nhau về độ lớn tại các đỉnh. Biểu đồ thể hiện conditional volatility lịch sử,
+> không phải dự báo giá và không tự xác định nguyên nhân của các cú sốc.
+
+**Lời thoại gợi ý (~55 giây):**
+
+> GJR có AIC nhỏ nhất, nhưng Nyblom bác bỏ tính ổn định tham số. eGARCH chỉ kém
+> GJR khoảng 0,00137 AIC, trong khi các core diagnostics và Nyblom đều đạt. Vì
+> vậy nhóm chọn eGARCH-t là ứng viên cân bằng, chứ không tuyên bố đây là model tốt
+> tuyệt đối. Pearson GOF vẫn bị bác bỏ nên distribution còn chưa mô tả hết dữ liệu.
 
 **Người nói:** Lê Đặng Hoàng Anh.
 
-## Slide 12 — Hạn chế và hướng phát triển
+## Slide 15 — Phần việc Người 3 đã thực hiện
+
+**Nội dung trên slide:**
+
+1. Xây dựng `R/04_garch_volatility.R`: fit 4 GARCH specification trên cùng input.
+2. Chạy pre-fit ARCH-LM và toàn bộ post-fit diagnostics.
+3. Xây dựng `R/05_model_comparison.R`: chuẩn hóa tiêu chí và chọn candidate.
+4. Xây dựng `R/06_export_report_tables.R`: xuất bảng kết quả tái lập được.
+5. Tích hợp bảng/hình vào `report/report.Rmd`, render Word và xây khung slide.
+6. Kiểm tra pipeline đầu-cuối bằng `source("R/run_all.R")`.
+
+**Đoạn có thể đặt trực tiếp trên slide để nhìn và đọc:**
+
+> Em phụ trách toàn bộ phần volatility từ khâu xây dựng bốn GARCH specification,
+> kiểm định diagnostics, so sánh mô hình đến xuất bảng và tích hợp báo cáo. Các
+> kết quả trên slide được sinh từ pipeline R và có thể tái lập từ dữ liệu sạch.
+
+**Minh họa nên chèn:** sơ đồ nhỏ
+`fpt_clean.csv → GARCH fits → diagnostics → comparison → report.docx`.
+
+**Lời thoại gợi ý (~40 giây):**
+
+> Phần em trực tiếp thực hiện gồm ba script từ 04 đến 06. Em fit bốn model, trích
+> diagnostics thành dữ liệu có cấu trúc, xây quy tắc so sánh và tự động xuất bảng,
+> hình vào báo cáo. Nhờ vậy quyết định chọn model có thể truy ngược từ code và CSV,
+> không phụ thuộc vào việc chép kết quả thủ công.
+
+**Người nói:** Lê Đặng Hoàng Anh.
+
+## Slide 16 — Hạn chế và hướng phát triển
 
 **Nội dung trên slide:**
 
@@ -274,9 +435,15 @@ nhóm tách riêng bài toán conditional variance bằng GARCH."
 
 **Hướng phát triển:** Rolling CV cho tất cả models, VaR backtest, thử skewed-t/GED.
 
+**Đoạn có thể đặt trực tiếp trên slide để nhìn và đọc:**
+
+> Kết quả hiện tại đủ để mô tả conditional volatility trong mẫu nhưng chưa đủ
+> cho một hệ thống quản trị rủi ro thực tế. Bước tiếp theo là đánh giá volatility
+> ngoài mẫu, backtest VaR và thử các phân phối linh hoạt hơn như skewed-t hoặc GED.
+
 **Người nói:** Lê Đặng Hoàng Anh.
 
-## Slide 13 — Kết luận
+## Slide 17 — Kết luận
 
 **Nội dung trên slide:**
 
@@ -287,9 +454,16 @@ nhóm tách riêng bài toán conditional variance bằng GARCH."
 5. eGARCH-Student-t cân bằng tốt nhất giữa fit, diagnostics và stability.
 6. Pipeline R tái lập được toàn bộ: dữ liệu → bảng → hình → báo cáo Word.
 
+**Đoạn kết luận có thể đọc trực tiếp:**
+
+> Tóm lại, log return của FPT có ARCH effect và Student-t phù hợp tương đối hơn
+> Normal. Trong bốn specification đã thử, eGARCH-Student-t tạo cân bằng tốt nhất
+> giữa độ phù hợp, residual diagnostics và stability, nhưng kết quả vẫn cần được
+> hiểu trong phạm vi dữ liệu và phương pháp của dự án.
+
 **Người nói:** Lê Đặng Hoàng Anh.
 
-## Slide 14 — Bảng phân công công việc *(Rubric: Phải in bảng phân công)*
+## Slide 18 — Bảng phân công công việc *(Rubric: Phải in bảng phân công)*
 
 > **LƯU Ý:** Bảng này **phải in ra giấy** để nộp kèm bài báo cáo theo yêu cầu
 > rubric. Đồng thời chiếu trên slide khi kết thúc phần trình bày.
@@ -325,8 +499,8 @@ Cảm ơn giảng viên TS. Phan Thị Thể. Mời đặt câu hỏi.
 - [ ] Mỗi thành viên tự trình bày phần mình làm (không đọc hộ).
 - [ ] Có demo ngữ cảnh bài toán (Slide 2).
 - [ ] Có demo quá trình phân tích dữ liệu (Slide 3-6).
-- [ ] Có giới thiệu mô hình sử dụng và thuật toán (Slide 8, 10).
-- [ ] Có đánh giá hiệu suất mô hình (Slide 9, 11).
+- [ ] Có giới thiệu mô hình sử dụng và thuật toán (Slide 8, 10-12).
+- [ ] Có đánh giá hiệu suất mô hình (Slide 9, 13-14).
 
 ## Kiểm tra kỹ thuật
 

@@ -114,7 +114,6 @@ diagnose_model <- function(model, name) {
   )
 }
 
-<<<<<<< HEAD
 # Một CV fold chỉ fit năm model có cùng coverage trong thiết kế hiện tại.
 score_cv_fold <- function(data, train_end, horizon, fold_id) {
   train <- data[seq_len(train_end), ]
@@ -130,94 +129,6 @@ score_cv_fold <- function(data, train_end, horizon, fold_id) {
     ETS_Damped = forecast::forecast(forecast::ets(train_ts, damped = TRUE), h = horizon)
   )
   score_forecasts(fits, test$close) %>% mutate(split = fold_id)
-=======
-# 3.8. HÀM KIỂM ĐỊNH TÍNH DỪNG (ADF TEST)
-run_adf_tests <- function(df) {
-  # Bỏ qua NA trong trường hợp df có chứa NA (ví dụ return dòng đầu)
-  price_series <- na.omit(df$close)
-  return_series <- na.omit(df$return)
-  
-  adf_price <- adf.test(price_series, alternative = "stationary")
-  adf_return <- adf.test(return_series, alternative = "stationary")
-  
-  return(data.frame(
-    Series = c("Price (Close)", "Log Return"),
-    ADF_Statistic = c(adf_price$statistic, adf_return$statistic),
-    P_Value = c(adf_price$p.value, adf_return$p.value),
-    Stationary = c(ifelse(adf_price$p.value < 0.05, "Yes (Reject H0)", "No (Fail to reject H0)"),
-                   ifelse(adf_return$p.value < 0.05, "Yes (Reject H0)", "No (Fail to reject H0)"))
-  ))
-}
-
-# 4. HÀM HUẤN LUYỆN VÀ DỰ BÁO TRÊN MỘT LẦN CHIA SPLIT
-forecast_one_split <- function(train_data, test_data) {
-  train_ts <- ts(train_data$close, frequency = 1)
-  h <- nrow(test_data)
-  actual <- test_data$close
-  metrics_list <- list()
-  
-  # 4.1 Naive
-  fc_naive <- naive(train_ts, h = h)
-  m_naive <- calculate_forecast_metrics(actual, fc_naive$mean)
-  m_naive$model <- "Naive"
-  metrics_list[[1]] <- m_naive
-  
-  # 4.2 Drift
-  fc_drift <- rwf(train_ts, drift = TRUE, h = h)
-  m_drift <- calculate_forecast_metrics(actual, fc_drift$mean)
-  m_drift$model <- "Drift"
-  metrics_list[[2]] <- m_drift
-  
-  # 4.3 ARIMA
-  fit_arima <- auto.arima(train_ts, stepwise = FALSE, approximation = FALSE)
-  fc_arima <- forecast(fit_arima, h = h)
-  m_arima <- calculate_forecast_metrics(actual, fc_arima$mean)
-  m_arima$model <- "ARIMA"
-  metrics_list[[3]] <- m_arima
-  
-  # 4.3.1 SARIMA
-  train_ts_seasonal <- ts(train_data$close, frequency = 5)
-  fit_sarima <- auto.arima(train_ts_seasonal, seasonal = TRUE, stepwise = FALSE, approximation = FALSE)
-  fc_sarima <- forecast(fit_sarima, h = h)
-  m_sarima <- calculate_forecast_metrics(actual, fc_sarima$mean)
-  m_sarima$model <- "SARIMA"
-  metrics_list[[4]] <- m_sarima
-  
-  # 4.4 ETS
-  fit_ets <- ets(train_ts)
-  fc_ets <- forecast(fit_ets, h = h)
-  m_ets <- calculate_forecast_metrics(actual, fc_ets$mean)
-  m_ets$model <- "ETS"
-  metrics_list[[5]] <- m_ets
-  
-  # 4.5 ETS Damped
-  fit_ets_damped <- ets(train_ts, damped = TRUE)
-  fc_ets_damped <- forecast(fit_ets_damped, h = h)
-  m_ets_damped <- calculate_forecast_metrics(actual, fc_ets_damped$mean)
-  m_ets_damped$model <- "ETS Damped"
-  metrics_list[[6]] <- m_ets_damped
-  
-  # 4.6 ARIMAX (Lagged)
-  fit_arimax <- NULL
-  fc_arimax <- NULL
-  xreg_train <- as.matrix(train_data %>% select(lag_volume, lag_daily_range, lag_return))
-  xreg_test <- as.matrix(test_data %>% select(lag_volume, lag_daily_range, lag_return))
-  if(!any(is.na(xreg_train)) && !any(is.na(xreg_test))) {
-    fit_arimax <- auto.arima(train_ts, xreg = xreg_train, stepwise = TRUE)
-    fc_arimax <- forecast(fit_arimax, xreg = xreg_test, h = h)
-    m_arimax <- calculate_forecast_metrics(actual, fc_arimax$mean)
-    m_arimax$model <- "ARIMAX (Lagged)"
-    metrics_list[[7]] <- m_arimax
-  }
-  
-  all_metrics <- bind_rows(metrics_list) %>% select(model, rmse, mae, mape)
-  
-  return(list(
-    metrics = all_metrics,
-    models = list(ARIMA = fit_arima, SARIMA = fit_sarima, ETS = fit_ets, ETS_Damped = fit_ets_damped, ARIMAX = fit_arimax),
-    forecasts = list(ARIMA = fc_arima, SARIMA = fc_sarima, ETS = fc_ets, ETS_Damped = fc_ets_damped, ARIMAX = fc_arimax)
-  ))
->>>>>>> main
 }
 
 # Rolling-origin mở rộng train theo thời gian và tổng hợp metric qua mọi fold.
@@ -233,95 +144,10 @@ run_rolling_cv <- function(data, initial, horizon = CV_HORIZON, step = CV_STEP) 
   list(raw = raw, summary = summary)
 }
 
-<<<<<<< HEAD
 # Đọc clean data, xác nhận schema và tạo feature chỉ từ thông tin phiên trước.
 data <- readr::read_csv(CLEAN_DATA_PATH, show_col_types = FALSE) %>%
   mutate(date = as.Date(date))
 assert_columns(data, MODEL_COLUMNS, "Dữ liệu model")
-=======
-# 6. MAIN EXECUTION
-if (sys.nframe() == 0) {
-  print("--- Bắt đầu Forecast Framework ---")
-  
-  df <- read.csv(CLEAN_DATA_PATH)
-  df$date <- as.Date(df$date)
-  
-  if("time" %in% names(df)) df <- df %>% select(-time)
-  validate_model_data(df)
-  
-  df <- df %>%
-    arrange(date) %>%
-    mutate(
-      daily_range = high - low,
-      lag_volume = dplyr::lag(volume, 1),
-      lag_daily_range = dplyr::lag(daily_range, 1),
-      lag_return = dplyr::lag(return, 1)
-    )
-  
-  df_model <- df %>% drop_na(lag_volume, lag_daily_range, lag_return)
-  n_total <- nrow(df_model)
-  n_test <- 30
-  n_train <- n_total - n_test
-  
-  train_data <- df_model[1:n_train, ]
-  test_data <- df_model[(n_train + 1):n_total, ]
-  
-  print("0. Kiểm định tính dừng (ADF Test)...")
-  adf_res <- run_adf_tests(df)
-  write.csv(adf_res, file.path(TABLE_DIR, "adf_test_results.csv"), row.names = FALSE)
-  print(paste("Đã xuất", file.path(TABLE_DIR, "adf_test_results.csv")))
-  
-  print("1. Huấn luyện các mô hình trên Final Split...")
-  final_split_results <- forecast_one_split(train_data, test_data)
-  
-  final_metrics <- final_split_results$metrics %>% mutate(split = "Final 30 days")
-  final_metrics <- final_metrics %>% select(model, split, rmse, mae, mape)
-  write.csv(final_metrics, file.path(TABLE_DIR, "forecast_metrics.csv"), row.names = FALSE)
-  print(paste("Đã xuất", file.path(TABLE_DIR, "forecast_metrics.csv")))
-  
-  print("1.5. Lưu biểu đồ, mô hình và trích xuất AIC/BIC...")
-  models <- final_split_results$models
-  forecasts <- final_split_results$forecasts
-  
-  # Lưu các biểu đồ
-  plot_forecast(forecasts$ARIMA, test_data$close, "ARIMA", "arima_forecast.png")
-  plot_forecast(forecasts$SARIMA, test_data$close, "SARIMA", "sarima_forecast.png")
-  plot_forecast(forecasts$ETS, test_data$close, "ETS", "ets_forecast.png")
-  plot_forecast(forecasts$ETS_Damped, test_data$close, "ETS Damped", "ets_damped_forecast.png")
-  if(!is.null(forecasts$ARIMAX)) plot_forecast(forecasts$ARIMAX, test_data$close, "ARIMA+XREG", "arima_xreg_forecast.png")
-  
-  # Lưu mô hình .rds
-  saveRDS(models$ARIMA, file.path(MODEL_DIR, "arima_model.rds"))
-  saveRDS(models$SARIMA, file.path(MODEL_DIR, "sarima_model.rds"))
-  saveRDS(models$ETS, file.path(MODEL_DIR, "ets_model.rds"))
-  saveRDS(models$ETS_Damped, file.path(MODEL_DIR, "ets_damped_model.rds"))
-  if(!is.null(models$ARIMAX)) saveRDS(models$ARIMAX, file.path(MODEL_DIR, "arima_xreg_model.rds"))
-  
-  # Trích xuất AIC/BIC
-  aic_bic_list <- list()
-  extract_aic_bic <- function(model, name, type) {
-    if(!is.null(model)) {
-      return(data.frame(model = name, aic = AIC(model), bic = BIC(model), type = type))
-    }
-    return(NULL)
-  }
-  
-  aic_bic_list[[1]] <- extract_aic_bic(models$ARIMA, "ARIMA", "Base")
-  aic_bic_list[[2]] <- extract_aic_bic(models$SARIMA, "SARIMA", "Improved")
-  aic_bic_list[[3]] <- extract_aic_bic(models$ARIMAX, "ARIMAX (Lagged)", "Improved")
-  aic_bic_list[[4]] <- extract_aic_bic(models$ETS, "ETS", "Base")
-  aic_bic_list[[5]] <- extract_aic_bic(models$ETS_Damped, "ETS Damped", "Improved")
-  
-  model_aic_bic <- bind_rows(aic_bic_list)
-  
-  # Ghép với bảng metrics
-  model_comparison_full <- final_metrics %>%
-    left_join(model_aic_bic, by = "model") %>%
-    select(model, rmse, mape, aic, bic, type)
-    
-  write.csv(model_comparison_full, file.path(TABLE_DIR, "model_aic_bic_comparison.csv"), row.names = FALSE)
-  print(paste("Đã xuất", file.path(TABLE_DIR, "model_aic_bic_comparison.csv")))
->>>>>>> main
 
 # ADF luôn được tái sinh từ đúng clean data của lần chạy hiện tại.
 stationarity <- bind_rows(
