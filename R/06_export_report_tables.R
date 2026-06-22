@@ -1,4 +1,5 @@
-# Gom các CSV quan trọng thành workbook nhiều sheet để kiểm tra thuận tiện.
+# MODULE 06 - XUẤT WORKBOOK KIỂM TRA
+# Module không tính lại kết quả; nó chỉ trình bày các CSV đã sinh trong một XLSX.
 source("R/00_config.R")
 require_packages("openxlsx")
 
@@ -22,7 +23,12 @@ header_style <- openxlsx::createStyle(
 )
 body_style <- openxlsx::createStyle(halign = "center", valign = "center")
 
-# Mỗi sheet có header, border, căn giữa và độ rộng cột tự động.
+#' Thêm một bảng dữ liệu vào workbook dưới dạng một worksheet
+#'
+#' @param data Data frame cần ghi.
+#' @param sheet Tên worksheet; phải hợp lệ theo quy tắc của Excel.
+#' @return Không trả dữ liệu; workbook ở parent environment được cập nhật.
+#' @details Side effects: tạo sheet, ghi dữ liệu, áp style và tự chỉnh độ rộng cột.
 add_table_sheet <- function(data, sheet) {
   openxlsx::addWorksheet(workbook, sheet)
   openxlsx::writeData(workbook, sheet, data, borders = "all")

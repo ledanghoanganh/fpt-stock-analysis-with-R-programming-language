@@ -1,4 +1,5 @@
-# Tạo bảng mô tả và chín biểu đồ EDA từ dữ liệu sạch.
+# MODULE 02 - PHÂN TÍCH KHÁM PHÁ VÀ TRỰC QUAN HÓA
+# Input: fpt_clean.csv. Output: hai bảng mô tả và chín hình PNG.
 source("R/00_config.R")
 require_packages(c("scales", "forecast"))
 if (!file.exists(CLEAN_DATA_PATH)) stop("Hãy chạy R/01_data_cleaning.R trước.")
@@ -23,7 +24,11 @@ missing_table <- tibble(
 )
 write_project_csv(missing_table, "missing_values.csv")
 
-# Hàm tóm tắt một biến giúp tránh lặp cùng sáu phép tính ba lần.
+#' Tính sáu thống kê mô tả cho một biến số
+#'
+#' @param values Numeric vector; giá trị `NA` được loại trước khi tính.
+#' @param name Tên biến sẽ xuất hiện trong cột `variable`.
+#' @return Tibble một hàng gồm count, mean, median, sd, min và max.
 summarise_variable <- function(values, name) {
   valid <- values[!is.na(values)]
   tibble(
@@ -49,6 +54,14 @@ project_theme <- ggplot2::theme_minimal(base_size = 11) +
     panel.grid.minor = element_blank(),
     legend.position = "bottom"
   )
+#' Lưu một biểu đồ ggplot theo chuẩn chung của dự án
+#'
+#' @param name Tên file PNG trong `output/figures`.
+#' @param plot Đối tượng ggplot cần lưu.
+#' @param width Chiều rộng hình tính bằng inch.
+#' @param height Chiều cao hình tính bằng inch.
+#' @return Kết quả vô hình từ `ggsave()`.
+#' @details Side effect: ghi PNG 300 DPI, nền trắng và ghi đè file cùng tên.
 save_plot <- function(name, plot, width = 10, height = 6) {
   ggsave(file.path(FIGURE_DIR, name), plot, width = width, height = height,
          dpi = 300, bg = "white")
@@ -118,7 +131,13 @@ save_plot("return_by_weekday.png", ggplot(returns, aes(weekday, return)) +
        subtitle = "Bằng chứng thăm dò cho mùa vụ tuần",
        x = NULL, y = "Log return") + project_theme)
 
-# ACF/PACF dùng base graphics nên mở thiết bị PNG riêng rồi đóng bằng dev.off().
+#' Lưu biểu đồ ACF hoặc PACF bằng base graphics
+#'
+#' @param name Tên file PNG trong `output/figures`.
+#' @param plot_function Hàm vẽ nhận vector return, ví dụ `forecast::Acf`.
+#' @param title Tiêu đề hiển thị trên biểu đồ.
+#' @return Không trả dữ liệu; hàm được gọi vì side effect tạo file PNG.
+#' @details `on.exit()` bảo đảm thiết bị đồ họa được đóng kể cả khi hàm vẽ lỗi.
 save_correlation_plot <- function(name, plot_function, title) {
   png(file.path(FIGURE_DIR, name), width = 1800, height = 1100, res = 180)
   on.exit(dev.off(), add = TRUE)

@@ -1,567 +1,400 @@
-# ==============================================================================
-# PROJECT: Stock Market Analysis (FPT)
-# SCRIPT: 04_garch_volatility.R
-# PURPOSE: Fit and compare symmetric/asymmetric GARCH(1,1) specifications
-# ==============================================================================
-
+# MODULE 04 - MÔ HÌNH HÓA CONDITIONAL VOLATILITY
+# Input: 2.786 log returns. Output: 4 GARCH fits, diagnostics, CSV/RDS và 5 PNG.
+# Thiết kế fail-fast: dữ liệu/model lỗi sẽ dừng ngay thay vì bị bỏ qua âm thầm.
 source("R/00_config.R")
 require_packages(c("rugarch", "FinTS", "scales"))
 
-# 1. READ AND VALIDATE DATA -----------------------------------------------------
-if (!file.exists(CLEAN_DATA_PATH)) {
-  stop("Không tìm thấy dữ liệu sạch: ", CLEAN_DATA_PATH)
-}
-
+# 1. DỮ LIỆU: GARCH dùng log return dạng thập phân, không dùng mức giá close.
 df <- readr::read_csv(CLEAN_DATA_PATH, show_col_types = FALSE)
 assert_columns(df, c("date", "return"), "Dữ liệu GARCH")
 
-df$date <- as.Date(df$date)
-valid_rows <- is.finite(df$return) & !is.na(df$date)
-df_valid <- df[valid_rows, c("date", "return")]
-returns <- as.numeric(df_valid$return)
+df_valid <- df %>%
+  transmute(date = as.Date(date), return = as.numeric(return)) %>%
+  filter(!is.na(date), is.finite(return))
+returns <- df_valid$return
 
-if (length(returns) < 500) stop("Không đủ return hợp lệ để fit GARCH")
-if (!isTRUE(all(diff(df_valid$date) >= 0))) stop("Dữ liệu chưa được sắp xếp theo ngày")
-if (!is.finite(stats::sd(returns)) || stats::sd(returns) == 0) {
-  stop("Chuỗi return không có độ biến động hợp lệ")
-}
-
-message("GARCH input: ", length(returns), " returns from ",
-        min(df_valid$date), " to ", max(df_valid$date))
-
-# 2. MODEL SPECIFICATIONS ------------------------------------------------------
-# Registry bảo đảm cả bốn model dùng cùng sample/mean equation và chỉ khác
-# variance specification hoặc innovation distribution.
-model_specs <- tibble::tribble(
-  ~model_name,           ~variance_model, ~distribution,
-  "sGARCH-Normal",      "sGARCH",        "norm",
-  "sGARCH-Student-t",   "sGARCH",        "std",
-  "eGARCH-Student-t",   "eGARCH",        "std",
-  "gjrGARCH-Student-t", "gjrGARCH",      "std"
+message(
+  "GARCH input: ", length(returns), " returns from ",
+  min(df_valid$date), " to ", max(df_valid$date)
 )
 
-# Tạo specification rồi fit bằng hybrid solver; input return giữ decimal scale.
-fit_garch_model <- function(returns, variance_model, distribution) {
-  specification <- rugarch::ugarchspec(
-    variance.model = list(
-      model = variance_model,
-      garchOrder = c(1, 1)
-    ),
-    mean.model = list(
-      armaOrder = c(0, 0),
-      include.mean = TRUE
-    ),
+# 2. BỐN MODEL: cùng sample và ARMA(0,0), chỉ khác variance/distribution.
+model_specs <- tibble::tribble(
+  ~model, ~variance_model, ~distribution,
+  "sGARCH-Normal", "sGARCH", "norm",
+  "sGARCH-Student-t", "sGARCH", "std",
+  "eGARCH-Student-t", "eGARCH", "std",
+  "gjrGARCH-Student-t", "gjrGARCH", "std"
+)
+
+#' Tạo specification và fit một GARCH(1,1)
+#'
+#' @param variance_model Tên variance model mà `rugarch` hỗ trợ.
+#' @param distribution Tên innovation distribution (`norm` hoặc `std`).
+#' @return Một object `uGARCHfit` chứa tham số, residual và volatility.
+#' @details Mọi model dùng cùng vector `returns`, ARMA(0,0) và hybrid solver.
+fit_one_garch <- function(variance_model, distribution) {
+  spec <- rugarch::ugarchspec(
+    variance.model = list(model = variance_model, garchOrder = c(1, 1)),
+    mean.model = list(armaOrder = c(0, 0), include.mean = TRUE),
     distribution.model = distribution
   )
-
-  rugarch::ugarchfit(
-    spec = specification,
-    data = returns,
-    solver = "hybrid"
-  )
+  rugarch::ugarchfit(spec, returns, solver = "hybrid")
 }
 
-# tryCatch biến lỗi optimizer thành dữ liệu để model khác vẫn được đánh giá.
-safe_fit_garch <- function(returns, variance_model, distribution) {
-  tryCatch(
-    list(
-      fit = fit_garch_model(returns, variance_model, distribution),
-      error = NA_character_
-    ),
-    error = function(error) {
-      list(fit = NULL, error = conditionMessage(error))
-    }
-  )
-}
-
-# Chuẩn hóa fit thành một hàng AIC/BIC/persistence, kể cả khi fit thất bại.
-extract_comparison_row <- function(result, model_name, variance_model, distribution) {
-  if (is.null(result$fit)) {
-    return(tibble::tibble(
-      model = model_name,
-      variance_model = variance_model,
-      distribution = distribution,
-      status = "failed",
-      convergence = NA_integer_,
-      log_likelihood = NA_real_,
-      aic = NA_real_,
-      bic = NA_real_,
-      persistence = NA_real_,
-      error = result$error
-    ))
+fits <- purrr::pmap(
+  model_specs,
+  function(model, variance_model, distribution) {
+    message("Fitting ", model, "...")
+    fit_one_garch(variance_model, distribution)
   }
+) %>% rlang::set_names(model_specs$model)
 
-  fit <- result$fit
-  criteria <- rugarch::infocriteria(fit)
-  tibble::tibble(
-    model = model_name,
-    variance_model = variance_model,
-    distribution = distribution,
-    status = if (fit@fit$convergence == 0) "converged" else "not_converged",
-    convergence = as.integer(fit@fit$convergence),
-    log_likelihood = as.numeric(rugarch::likelihood(fit)),
-    aic = as.numeric(criteria[1]),
-    bic = as.numeric(criteria[2]),
-    persistence = as.numeric(fit@fit$persistence),
-    error = NA_character_
-  )
-}
+# 3. BẢNG FIT VÀ THAM SỐ.
+garch_comparison <- purrr::pmap_dfr(
+  c(model_specs, list(fit = unname(fits))),
+  function(model, variance_model, distribution, fit) {
+    criteria <- rugarch::infocriteria(fit)
+    tibble(
+      model, variance_model, distribution,
+      status = if_else(fit@fit$convergence == 0, "converged", "not_converged"),
+      convergence = as.integer(fit@fit$convergence),
+      log_likelihood = as.numeric(rugarch::likelihood(fit)),
+      aic = as.numeric(criteria[1]),
+      bic = as.numeric(criteria[2]),
+      persistence = as.numeric(fit@fit$persistence),
+      error = NA_character_
+    )
+  }
+) %>% arrange(aic)
 
-# Giữ cả conventional và robust standard errors để diễn giải thận trọng.
-extract_parameter_rows <- function(fit, model_name) {
+garch_parameters <- purrr::imap_dfr(fits, function(fit, model) {
   conventional <- fit@fit$matcoef
   robust <- fit@fit$robust.matcoef
-
-  tibble::tibble(
-    model = model_name,
+  tibble(
+    model,
     parameter = rownames(conventional),
-    estimate = as.numeric(conventional[, 1]),
-    std_error = as.numeric(conventional[, 2]),
-    p_value = as.numeric(conventional[, 4]),
-    robust_std_error = as.numeric(robust[, 2]),
-    robust_p_value = as.numeric(robust[, 4])
+    estimate = conventional[, 1],
+    std_error = conventional[, 2],
+    p_value = conventional[, 4],
+    robust_std_error = robust[, 2],
+    robust_p_value = robust[, 4]
   )
-}
+})
 
-# z_t = epsilon_t / sigma_t là chuỗi cần gần white noise sau GARCH.
+#' Tính standardized residual z_t = epsilon_t / sigma_t
+#'
+#' @param fit Một object `uGARCHfit` đã hội tụ.
+#' @return Numeric vector có cùng độ dài với chuỗi return.
 standardized_residuals <- function(fit) {
-  residual_values <- as.numeric(fit@fit$residuals)
-  sigma_values <- as.numeric(fit@fit$sigma)
-  values <- residual_values / sigma_values
-  values[is.finite(values)]
+  as.numeric(fit@fit$residuals) / as.numeric(fit@fit$sigma)
 }
 
-# Mọi kiểm định được đưa về cùng schema dài để dễ lọc và xuất CSV.
+#' Tạo một hàng diagnostic theo schema chung
+#'
+#' @param model Tên model.
+#' @param category Nhóm kiểm định, ví dụ `remaining_arch`.
+#' @param test Tên kiểm định cụ thể.
+#' @param lag Lag của kiểm định; `NA` nếu không áp dụng.
+#' @param statistic Test statistic.
+#' @param p_value P-value; `NA` với kiểm định dùng critical value.
+#' @param critical_5pct Critical value tại mức 5%.
+#' @param result Kết luận dạng machine-readable.
+#' @return Tibble một hàng với đúng schema của `garch_diagnostics.csv`.
 diagnostic_row <- function(
-    model, category, test, lag = NA_integer_, statistic = NA_real_,
-    p_value = NA_real_, critical_5pct = NA_real_, result = NA_character_) {
-  tibble::tibble(
-    model = model,
-    category = category,
-    test = test,
+  model, category, test, lag = NA_integer_, statistic = NA_real_,
+  p_value = NA_real_, critical_5pct = NA_real_, result = NA_character_
+) {
+  tibble(
+    model, category, test,
     lag = as.integer(lag),
     statistic = as.numeric(statistic),
     p_value = as.numeric(p_value),
     critical_5pct = as.numeric(critical_5pct),
-    result = result
+    result
   )
 }
 
-# p >= 0.05 nghĩa là chưa bác bỏ H0 của diagnostic tương ứng.
-p_value_result <- function(p_value, pass_text, flag_text) {
-  if (!is.finite(p_value)) return("not_available")
-  if (p_value >= 0.05) pass_text else flag_text
-}
+#' Chuyển p-value diagnostic thành nhãn đạt/cảnh báo
+#'
+#' @param p P-value của kiểm định có H0 là “không còn vấn đề”.
+#' @param pass Nhãn khi chưa bác bỏ H0 (`p >= 0.05`).
+#' @param flag Nhãn khi bác bỏ H0 (`p < 0.05`).
+#' @return Một character scalar.
+pass_or_flag <- function(p, pass, flag) if (p >= 0.05) pass else flag
 
-# Chạy tuần tự residual, ARCH, asymmetry, stability và distribution diagnostics.
-diagnose_garch_model <- function(fit, model_name) {
+#' Chạy toàn bộ post-fit diagnostics cho một GARCH model
+#'
+#' @param fit Một object `uGARCHfit` đã hội tụ.
+#' @param model Tên model dùng trong output.
+#' @return Tibble dạng dài gồm Ljung-Box, ARCH-LM, sign-bias, Nyblom và GOF.
+#' @details Hàm giả định các diagnostic của `rugarch` chạy thành công; nếu không,
+#'   pipeline dừng để lỗi không bị che giấu.
+diagnose_one_garch <- function(fit, model) {
   z <- standardized_residuals(fit)
-
-  lb_return <- stats::Box.test(z, lag = 20, type = "Ljung-Box", fitdf = 0)
-  lb_squared <- stats::Box.test(z^2, lag = 20, type = "Ljung-Box", fitdf = 0)
-  arch_after <- FinTS::ArchTest(z, lags = 12)
+  lb <- Box.test(z, lag = 20, type = "Ljung-Box", fitdf = 0)
+  lb2 <- Box.test(z^2, lag = 20, type = "Ljung-Box", fitdf = 0)
+  arch <- FinTS::ArchTest(z, lags = 12)
+  sign <- rugarch::signbias(fit)
+  stability <- rugarch::nyblom(fit)
+  pearson <- rugarch::gof(fit, groups = c(20, 30, 40, 50))
 
   rows <- list(
     diagnostic_row(
-      model_name, "serial_correlation", "Ljung-Box standardized residuals",
-      lag = 20, statistic = unname(lb_return$statistic), p_value = lb_return$p.value,
-      result = p_value_result(
-        lb_return$p.value,
-        "no_serial_correlation_detected",
-        "serial_correlation_flagged"
-      )
+      model, "serial_correlation", "Ljung-Box standardized residuals", 20,
+      unname(lb$statistic), lb$p.value,
+      result = pass_or_flag(lb$p.value, "no_serial_correlation_detected",
+                            "serial_correlation_flagged")
     ),
     diagnostic_row(
-      model_name, "variance_dependence", "Ljung-Box squared standardized residuals",
-      lag = 20, statistic = unname(lb_squared$statistic), p_value = lb_squared$p.value,
-      result = p_value_result(
-        lb_squared$p.value,
-        "no_squared_residual_dependence_detected",
-        "squared_residual_dependence_flagged"
-      )
+      model, "variance_dependence", "Ljung-Box squared standardized residuals", 20,
+      unname(lb2$statistic), lb2$p.value,
+      result = pass_or_flag(lb2$p.value, "no_squared_residual_dependence_detected",
+                            "squared_residual_dependence_flagged")
     ),
     diagnostic_row(
-      model_name, "remaining_arch", "ARCH-LM standardized residuals",
-      lag = 12, statistic = unname(arch_after$statistic), p_value = arch_after$p.value,
-      result = p_value_result(
-        arch_after$p.value,
-        "no_remaining_arch_detected",
-        "remaining_arch_flagged"
-      )
+      model, "remaining_arch", "ARCH-LM standardized residuals", 12,
+      unname(arch$statistic), arch$p.value,
+      result = pass_or_flag(arch$p.value, "no_remaining_arch_detected",
+                            "remaining_arch_flagged")
     )
   )
 
-  sign_bias <- tryCatch(rugarch::signbias(fit), error = function(error) NULL)
-  if (!is.null(sign_bias)) {
-    for (index in seq_len(nrow(sign_bias))) {
-      test_name <- rownames(sign_bias)[index]
-      test_p <- as.numeric(sign_bias[index, "prob"])
-      rows[[length(rows) + 1]] <- diagnostic_row(
-        model_name, "asymmetry", test_name,
-        statistic = as.numeric(sign_bias[index, "t-value"]),
-        p_value = test_p,
-        result = p_value_result(
-          test_p,
-          "no_sign_bias_detected",
-          "sign_bias_flagged"
-        )
-      )
-    }
-  }
-
-  stability <- tryCatch(rugarch::nyblom(fit), error = function(error) NULL)
-  if (!is.null(stability)) {
-    joint_critical <- unname(stability$JointCritical["5%"])
-    rows[[length(rows) + 1]] <- diagnostic_row(
-      model_name, "parameter_stability", "Nyblom joint stability",
-      statistic = stability$JointStat,
-      critical_5pct = joint_critical,
-      result = if (stability$JointStat <= joint_critical) {
-        "parameters_stable_at_5pct"
-      } else {
-        "parameter_instability_flagged"
-      }
+  # Bốn dòng sign-bias: Sign, Negative, Positive và Joint Effect.
+  rows <- c(rows, lapply(seq_len(nrow(sign)), function(i) {
+    p <- as.numeric(sign[i, "prob"])
+    diagnostic_row(
+      model, "asymmetry", rownames(sign)[i],
+      statistic = sign[i, "t-value"], p_value = p,
+      result = pass_or_flag(p, "no_sign_bias_detected", "sign_bias_flagged")
     )
+  }))
 
-    individual_critical <- unname(stability$IndividualCritical["5%"])
-    individual_stats <- as.numeric(stability$IndividualStat[, 1])
-    names(individual_stats) <- rownames(stability$IndividualStat)
-    for (parameter in names(individual_stats)) {
-      rows[[length(rows) + 1]] <- diagnostic_row(
-        model_name, "parameter_stability", paste("Nyblom", parameter),
-        statistic = individual_stats[[parameter]],
-        critical_5pct = individual_critical,
-        result = if (individual_stats[[parameter]] <= individual_critical) {
-          "parameter_stable_at_5pct"
-        } else {
-          "parameter_instability_flagged"
-        }
-      )
-    }
-  }
-
-  goodness_of_fit <- tryCatch(
-    rugarch::gof(fit, groups = c(20, 30, 40, 50)),
-    error = function(error) NULL
+  # Một dòng Nyblom joint và một dòng cho từng parameter.
+  joint_critical <- unname(stability$JointCritical["5%"])
+  rows[[length(rows) + 1]] <- diagnostic_row(
+    model, "parameter_stability", "Nyblom joint stability",
+    statistic = stability$JointStat, critical_5pct = joint_critical,
+    result = if_else(stability$JointStat <= joint_critical,
+                     "parameters_stable_at_5pct", "parameter_instability_flagged")
   )
-  if (!is.null(goodness_of_fit)) {
-    for (index in seq_len(nrow(goodness_of_fit))) {
-      group <- as.integer(goodness_of_fit[index, "group"])
-      test_p <- as.numeric(goodness_of_fit[index, "p-value(g-1)"])
-      rows[[length(rows) + 1]] <- diagnostic_row(
-        model_name, "distribution_fit", paste("Adjusted Pearson group", group),
-        statistic = as.numeric(goodness_of_fit[index, "statistic"]),
-        p_value = test_p,
-        result = p_value_result(
-          test_p,
-          "distribution_not_rejected_at_5pct",
-          "distribution_fit_flagged"
-        )
-      )
-    }
-  }
 
-  dplyr::bind_rows(rows)
+  individual_critical <- unname(stability$IndividualCritical["5%"])
+  individual <- stability$IndividualStat[, 1]
+  rows <- c(rows, lapply(seq_along(individual), function(i) {
+    diagnostic_row(
+      model, "parameter_stability", paste("Nyblom", rownames(stability$IndividualStat)[i]),
+      statistic = individual[i], critical_5pct = individual_critical,
+      result = if_else(individual[i] <= individual_critical,
+                       "parameter_stable_at_5pct", "parameter_instability_flagged")
+    )
+  }))
+
+  # Bốn nhóm adjusted Pearson GOF: 20, 30, 40 và 50.
+  rows <- c(rows, lapply(seq_len(nrow(pearson)), function(i) {
+    group <- as.integer(pearson[i, "group"])
+    p <- as.numeric(pearson[i, "p-value(g-1)"])
+    diagnostic_row(
+      model, "distribution_fit", paste("Adjusted Pearson group", group),
+      statistic = pearson[i, "statistic"], p_value = p,
+      result = pass_or_flag(p, "distribution_not_rejected_at_5pct",
+                            "distribution_fit_flagged")
+    )
+  }))
+
+  bind_rows(rows)
 }
 
-# Chuyển output acf() thành bảng để vẽ facet cho mọi model cùng lúc.
-acf_rows <- function(values, model_name, series_name, lag_max = 40) {
-  acf_result <- stats::acf(values, lag.max = lag_max, plot = FALSE, na.action = na.pass)
-  tibble::tibble(
-    model = model_name,
-    series = series_name,
-    lag = as.integer(acf_result$lag),
-    acf = as.numeric(acf_result$acf),
-    confidence = 1.96 / sqrt(length(values))
-  ) %>%
-    dplyr::filter(lag > 0)
-}
-
-# 3. FIT ALL MODELS ON THE SAME RETURN VECTOR ---------------------------------
-# pmap fit từng hàng registry và giữ model_name làm tên list.
-fit_results <- purrr::pmap(
-  model_specs,
-  function(model_name, variance_model, distribution) {
-    message("Fitting ", model_name, "...")
-    safe_fit_garch(returns, variance_model, distribution)
-  }
-) %>% rlang::set_names(model_specs$model_name)
-
-# Ghép registry với result theo vị trí để tạo bảng comparison không cần loop.
-comparison_rows <- purrr::pmap(
-  c(model_specs, list(result = unname(fit_results))),
-  function(model_name, variance_model, distribution, result) {
-    extract_comparison_row(result, model_name, variance_model, distribution)
-  }
-)
-garch_comparison <- bind_rows(comparison_rows) %>%
-  dplyr::arrange(is.na(aic), aic)
-
-successful_fits <- purrr::map(fit_results, "fit") %>% purrr::compact()
-
-if (length(successful_fits) == 0) {
-  readr::write_csv(garch_comparison, file.path(TABLE_DIR, "garch_comparison.csv"))
-  stop("Không có GARCH model nào fit thành công")
-}
-
-parameter_rows <- purrr::imap(successful_fits, extract_parameter_rows)
-garch_parameters <- dplyr::bind_rows(parameter_rows)
-
-# 4. PRE-FIT AND POST-FIT DIAGNOSTICS ------------------------------------------
+# 4. ARCH-LM TRƯỚC FIT VÀ DIAGNOSTICS SAU FIT.
 pre_arch <- FinTS::ArchTest(returns, lags = 12)
 pre_arch_row <- diagnostic_row(
-  model = "Raw return",
-  category = "pre_fit_arch",
-  test = "ARCH-LM raw return",
-  lag = 12,
-  statistic = unname(pre_arch$statistic),
-  p_value = pre_arch$p.value,
-  result = if (pre_arch$p.value < 0.05) {
-    "arch_effect_detected"
-  } else {
-    "no_arch_effect_detected"
-  }
+  "Raw return", "pre_fit_arch", "ARCH-LM raw return", 12,
+  unname(pre_arch$statistic), pre_arch$p.value,
+  result = if_else(pre_arch$p.value < 0.05,
+                   "arch_effect_detected", "no_arch_effect_detected")
 )
 
-model_diagnostic_rows <- purrr::imap(successful_fits, diagnose_garch_model)
-garch_diagnostics <- dplyr::bind_rows(
+garch_diagnostics <- bind_rows(
   pre_arch_row,
-  dplyr::bind_rows(model_diagnostic_rows)
+  purrr::imap_dfr(fits, diagnose_one_garch)
 )
 
-extract_test_value <- function(data, test_name, column) {
-  values <- data[data$test == test_name, column, drop = TRUE]
-  if (length(values) == 0) return(NA_real_)
-  as.numeric(values[1])
-}
-
-diagnostic_summary_rows <- purrr::imap_dfr(successful_fits, function(fit, model_name) {
-  model_tests <- garch_diagnostics %>% dplyr::filter(model == model_name)
-  comparison <- garch_comparison %>% dplyr::filter(model == model_name)
-  tibble::tibble(
+diagnostic_summary <- purrr::imap_dfr(fits, function(fit, model_name) {
+  tests <- filter(garch_diagnostics, .data$model == .env$model_name)
+  # Lấy đúng một ô từ bảng diagnostics theo tên test và tên cột.
+  value <- function(test, column) tests[[column]][match(test, tests$test)]
+  tibble(
     model = model_name,
     convergence = fit@fit$convergence,
-    persistence = comparison$persistence[1],
-    ljung_box_residual_p = extract_test_value(
-      model_tests, "Ljung-Box standardized residuals", "p_value"
-    ),
-    ljung_box_squared_p = extract_test_value(
-      model_tests, "Ljung-Box squared standardized residuals", "p_value"
-    ),
-    arch_lm_p = extract_test_value(
-      model_tests, "ARCH-LM standardized residuals", "p_value"
-    ),
-    sign_bias_joint_p = extract_test_value(model_tests, "Joint Effect", "p_value"),
-    nyblom_joint = extract_test_value(model_tests, "Nyblom joint stability", "statistic"),
-    nyblom_5pct_critical = extract_test_value(
-      model_tests, "Nyblom joint stability", "critical_5pct"
-    ),
-    pearson_group20_p = extract_test_value(
-      model_tests, "Adjusted Pearson group 20", "p_value"
-    )
+    persistence = garch_comparison$persistence[match(model_name, garch_comparison$model)],
+    ljung_box_residual_p = value("Ljung-Box standardized residuals", "p_value"),
+    ljung_box_squared_p = value("Ljung-Box squared standardized residuals", "p_value"),
+    arch_lm_p = value("ARCH-LM standardized residuals", "p_value"),
+    sign_bias_joint_p = value("Joint Effect", "p_value"),
+    nyblom_joint = value("Nyblom joint stability", "statistic"),
+    nyblom_5pct_critical = value("Nyblom joint stability", "critical_5pct"),
+    pearson_group20_p = value("Adjusted Pearson group 20", "p_value")
   )
 })
 
-acf_data <- purrr::imap_dfr(successful_fits, function(fit, model_name) {
-  z <- standardized_residuals(fit)
-  dplyr::bind_rows(
-    acf_rows(z, model_name, "Standardized residual"),
-    acf_rows(z^2, model_name, "Squared standardized residual")
-  )
-})
-
-qq_data <- purrr::imap_dfr(successful_fits, function(fit, model_name) {
-  tibble::tibble(
-    model = model_name,
-    standardized_residual = standardized_residuals(fit)
-  )
-})
-
+# 5. XUẤT CÁC BẢNG VÀ MODEL.
 write_project_csv(garch_comparison, "garch_comparison.csv")
 write_project_csv(garch_parameters, "garch_parameters.csv")
 write_project_csv(garch_diagnostics, "garch_diagnostics.csv")
-write_project_csv(diagnostic_summary_rows, "garch_diagnostic_summary.csv")
-saveRDS(successful_fits, file.path(MODEL_DIR, "garch_fits.rds"))
+write_project_csv(diagnostic_summary, "garch_diagnostic_summary.csv")
+saveRDS(fits, file.path(MODEL_DIR, "garch_fits.rds"))
 
-print(garch_comparison)
-
-# 5. LEGACY BASE-MODEL OUTPUTS -------------------------------------------------
-# Keep these files until report/model-comparison modules are migrated.
-base_name <- "sGARCH-Normal"
-if (!base_name %in% names(successful_fits)) {
-  stop("Base sGARCH-Normal failed; legacy outputs cannot be produced")
-}
-
-base_fit <- successful_fits[[base_name]]
+# Hai output cũ của sGARCH-Normal vẫn được giữ cho các module hiện tại.
+base_fit <- fits[["sGARCH-Normal"]]
 saveRDS(base_fit, file.path(MODEL_DIR, "garch_model.rds"))
 
-base_parameters <- garch_parameters %>%
-  dplyr::filter(model == base_name) %>%
-  dplyr::transmute(
-    Parameter = parameter,
-    Estimate = estimate,
-    StdError = std_error,
-    t_value = Estimate / StdError,
-    Pr_z = p_value
+base_parameters <- filter(garch_parameters, model == "sGARCH-Normal") %>%
+  transmute(
+    Parameter = parameter, Estimate = estimate, StdError = std_error,
+    t_value = Estimate / StdError, Pr_z = p_value
   )
-
-base_info <- tibble::tibble(
+base_info <- tibble(
   Parameter = c("Log-Likelihood", "AIC", "BIC"),
-  Estimate = c(
-    rugarch::likelihood(base_fit),
-    rugarch::infocriteria(base_fit)[1],
-    rugarch::infocriteria(base_fit)[2]
-  ),
-  StdError = NA_real_,
-  t_value = NA_real_,
-  Pr_z = NA_real_
+  Estimate = c(rugarch::likelihood(base_fit), rugarch::infocriteria(base_fit)[1:2]),
+  StdError = NA_real_, t_value = NA_real_, Pr_z = NA_real_
 )
+write_project_csv(bind_rows(base_parameters, base_info), "garch_summary.csv")
 
-garch_summary <- dplyr::bind_rows(base_parameters, base_info)
-write_project_csv(garch_summary, "garch_summary.csv")
-
-base_volatility <- as.numeric(base_fit@fit$sigma)
-vol_df <- tibble::tibble(
+vol_df <- tibble(
   date = df_valid$date,
   return = returns,
-  volatility = base_volatility
+  volatility = as.numeric(base_fit@fit$sigma)
 )
 write_project_csv(vol_df, "garch_volatility.csv")
 
-# 6. VISUALIZATIONS ------------------------------------------------------------
-theme_garch <- ggplot2::theme_minimal(base_size = 11) +
-  ggplot2::theme(
-    plot.title = ggplot2::element_text(face = "bold", hjust = 0.5),
-    plot.subtitle = ggplot2::element_text(hjust = 0.5, color = "grey35"),
-    legend.position = "bottom",
-    panel.grid.minor = ggplot2::element_blank()
-  )
+# 6. DỮ LIỆU PHỤC VỤ CÁC BIỂU ĐỒ.
+volatility_long <- purrr::imap_dfr(fits, function(fit, model) {
+  tibble(date = df_valid$date, volatility = as.numeric(fit@fit$sigma), model)
+})
 
-# Một wrapper ggsave giữ kích thước/DPI/background nhất quán cho mọi hình GARCH.
-save_garch_plot <- function(filename, plot, width, height) {
-  ggplot2::ggsave(file.path(FIGURE_DIR, filename), plot, width = width,
-                  height = height, dpi = 300, bg = "white")
+#' Chuyển kết quả ACF thành tibble để vẽ facet
+#'
+#' @param values Numeric vector cần tính ACF.
+#' @param model Tên model dùng cho facet.
+#' @param series Nhãn loại residual dùng cho facet.
+#' @return Tibble gồm lag 1-40, ACF và biên white-noise xấp xỉ 95%.
+acf_rows <- function(values, model, series) {
+  result <- acf(values, lag.max = 40, plot = FALSE)
+  tibble(
+    model, series,
+    lag = as.integer(result$lag),
+    acf = as.numeric(result$acf),
+    confidence = 1.96 / sqrt(length(values))
+  ) %>% filter(lag > 0)
 }
 
-p_base <- ggplot2::ggplot(vol_df, ggplot2::aes(date)) +
-  ggplot2::geom_line(ggplot2::aes(y = return), color = "grey70", linewidth = 0.3) +
-  ggplot2::geom_line(ggplot2::aes(y = volatility), color = "#C62828", linewidth = 0.55) +
-  ggplot2::geom_line(ggplot2::aes(y = -volatility), color = "#C62828", linewidth = 0.55) +
-  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  ggplot2::scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
-  ggplot2::labs(
+acf_data <- purrr::imap_dfr(fits, function(fit, model) {
+  z <- standardized_residuals(fit)
+  bind_rows(
+    acf_rows(z, model, "Standardized residual"),
+    acf_rows(z^2, model, "Squared standardized residual")
+  )
+})
+
+qq_data <- purrr::imap_dfr(fits, function(fit, model) {
+  tibble(model, standardized_residual = standardized_residuals(fit))
+})
+
+news_impact_data <- purrr::map_dfr(
+  c("eGARCH-Student-t", "gjrGARCH-Student-t"),
+  function(model) {
+    impact <- rugarch::newsimpact(fits[[model]])
+    tibble(
+      shock = as.numeric(impact$zx),
+      conditional_variance = as.numeric(impact$zy),
+      model
+    )
+  }
+)
+
+# 7. VẼ VÀ LƯU NĂM HÌNH GARCH.
+theme_garch <- theme_minimal(base_size = 11) +
+  theme(
+    plot.title = element_text(face = "bold", hjust = 0.5),
+    plot.subtitle = element_text(hjust = 0.5, color = "grey35"),
+    legend.position = "bottom",
+    panel.grid.minor = element_blank()
+  )
+
+#' Lưu một biểu đồ GARCH theo chuẩn chung
+#'
+#' @param filename Tên PNG trong `output/figures`.
+#' @param plot Đối tượng ggplot.
+#' @param width Chiều rộng tính bằng inch.
+#' @param height Chiều cao tính bằng inch.
+#' @return Kết quả vô hình từ `ggsave()`.
+#' @details Side effect: ghi PNG 300 DPI, nền trắng.
+save_plot <- function(filename, plot, width, height) {
+  ggsave(file.path(FIGURE_DIR, filename), plot,
+         width = width, height = height, dpi = 300, bg = "white")
+}
+
+p_base <- ggplot(vol_df, aes(date)) +
+  geom_line(aes(y = return), color = "grey70", linewidth = 0.3) +
+  geom_line(aes(y = volatility), color = "#C62828", linewidth = 0.55) +
+  geom_line(aes(y = -volatility), color = "#C62828", linewidth = 0.55) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
+  labs(
     title = "FPT returns and sGARCH(1,1)-Normal volatility",
     subtitle = "Red lines are +/- one conditional standard deviation, not a 95% interval",
-    x = NULL,
-    y = "Return / conditional volatility"
-  ) +
-  theme_garch
+    x = NULL, y = "Return / conditional volatility"
+  ) + theme_garch
+save_plot("garch_volatility.png", p_base, 11, 6.5)
 
-save_garch_plot("garch_volatility.png", p_base, 11, 6.5)
-
-volatility_long <- purrr::imap_dfr(successful_fits, function(fit, model_name) {
-  tibble::tibble(
-    date = df_valid$date,
-    volatility = as.numeric(fit@fit$sigma),
-    model = model_name
-  )
-})
-
-p_comparison <- ggplot2::ggplot(
-  volatility_long,
-  ggplot2::aes(date, volatility, color = model)
-) +
-  ggplot2::geom_line(linewidth = 0.45, alpha = 0.85) +
-  ggplot2::scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  ggplot2::scale_y_continuous(labels = scales::label_percent(accuracy = 0.5)) +
-  ggplot2::labs(
+p_comparison <- ggplot(volatility_long, aes(date, volatility, color = model)) +
+  geom_line(linewidth = 0.45, alpha = 0.85) +
+  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
+  scale_y_continuous(labels = scales::label_percent(accuracy = 0.5)) +
+  labs(
     title = "Conditional volatility across GARCH specifications",
     subtitle = "All models use the same FPT return sample",
-    x = NULL,
-    y = "Conditional volatility",
-    color = "Model"
-  ) +
-  theme_garch
+    x = NULL, y = "Conditional volatility", color = "Model"
+  ) + theme_garch
+save_plot("garch_model_comparison.png", p_comparison, 11, 6.5)
 
-save_garch_plot("garch_model_comparison.png", p_comparison, 11, 6.5)
-
-p_acf <- ggplot2::ggplot(acf_data, ggplot2::aes(lag, acf)) +
-  ggplot2::geom_ribbon(
-    ggplot2::aes(ymin = -confidence, ymax = confidence),
-    fill = "#90CAF9", alpha = 0.35
-  ) +
-  ggplot2::geom_hline(yintercept = 0, color = "grey40") +
-  ggplot2::geom_col(fill = "#1565C0", width = 0.65) +
-  ggplot2::facet_grid(series ~ model, scales = "free_y") +
-  ggplot2::labs(
+p_acf <- ggplot(acf_data, aes(lag, acf)) +
+  geom_ribbon(aes(ymin = -confidence, ymax = confidence),
+              fill = "#90CAF9", alpha = 0.35) +
+  geom_hline(yintercept = 0, color = "grey40") +
+  geom_col(fill = "#1565C0", width = 0.65) +
+  facet_grid(series ~ model, scales = "free_y") +
+  labs(
     title = "ACF diagnostics for standardized GARCH residuals",
     subtitle = "Blue bands are approximate 95% white-noise bounds",
-    x = "Lag",
-    y = "ACF"
-  ) +
-  theme_garch +
-  ggplot2::theme(
-    axis.text.x = ggplot2::element_text(size = 7),
-    strip.text = ggplot2::element_text(size = 8)
-  )
+    x = "Lag", y = "ACF"
+  ) + theme_garch +
+  theme(axis.text.x = element_text(size = 7), strip.text = element_text(size = 8))
+save_plot("garch_acf_diagnostics.png", p_acf, 14, 7.5)
 
-save_garch_plot("garch_acf_diagnostics.png", p_acf, 14, 7.5)
-
-p_qq <- ggplot2::ggplot(
-  qq_data,
-  ggplot2::aes(sample = standardized_residual)
-) +
-  ggplot2::stat_qq(alpha = 0.35, size = 0.7, color = "#1565C0") +
-  ggplot2::stat_qq_line(color = "#C62828", linewidth = 0.6) +
-  ggplot2::facet_wrap(~model, scales = "free", ncol = 2) +
-  ggplot2::labs(
+p_qq <- ggplot(qq_data, aes(sample = standardized_residual)) +
+  stat_qq(alpha = 0.35, size = 0.7, color = "#1565C0") +
+  stat_qq_line(color = "#C62828", linewidth = 0.6) +
+  facet_wrap(~model, scales = "free", ncol = 2) +
+  labs(
     title = "Normal-reference Q-Q plots of standardized residuals",
     subtitle = "Descriptive tail check; Student-t models are not expected to follow a Normal line exactly",
-    x = "Theoretical Normal quantile",
-    y = "Sample quantile"
-  ) +
-  theme_garch
+    x = "Theoretical Normal quantile", y = "Sample quantile"
+  ) + theme_garch
+save_plot("garch_qq_diagnostics.png", p_qq, 11, 8)
 
-save_garch_plot("garch_qq_diagnostics.png", p_qq, 11, 8)
+p_news <- ggplot(news_impact_data, aes(shock, conditional_variance, color = model)) +
+  geom_line(linewidth = 0.9) +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey45") +
+  facet_wrap(~model, scales = "free_y") +
+  labs(
+    title = "News-impact curves for asymmetric GARCH models",
+    subtitle = "Compare equal-sized negative and positive standardized shocks",
+    x = "Standardized shock", y = "Conditional variance", color = "Model"
+  ) + theme_garch
+save_plot("garch_news_impact.png", p_news, 11, 5.5)
 
-asymmetric_names <- intersect(
-  c("eGARCH-Student-t", "gjrGARCH-Student-t"),
-  names(successful_fits)
-)
-news_impact_data <- purrr::map_dfr(asymmetric_names, function(model_name) {
-  impact <- tryCatch(
-    rugarch::newsimpact(successful_fits[[model_name]]),
-    error = function(error) NULL
-  )
-  if (is.null(impact)) return(tibble::tibble())
-  tibble::tibble(
-    shock = as.numeric(impact$zx),
-    conditional_variance = as.numeric(impact$zy),
-    model = model_name
-  )
-})
-
-if (nrow(news_impact_data) > 0) {
-  p_news <- ggplot2::ggplot(
-    news_impact_data,
-    ggplot2::aes(shock, conditional_variance, color = model)
-  ) +
-    ggplot2::geom_line(linewidth = 0.9) +
-    ggplot2::geom_vline(xintercept = 0, linetype = "dashed", color = "grey45") +
-    ggplot2::facet_wrap(~model, scales = "free_y") +
-    ggplot2::labs(
-      title = "News-impact curves for asymmetric GARCH models",
-      subtitle = "Compare equal-sized negative and positive standardized shocks",
-      x = "Standardized shock",
-      y = "Conditional variance",
-      color = "Model"
-    ) +
-    theme_garch
-
-  save_garch_plot("garch_news_impact.png", p_news, 11, 5.5)
-}
-
-message("Completed GARCH framework: ", length(successful_fits), "/",
-        nrow(model_specs), " models fitted.")
+print(garch_comparison)
+message("Completed GARCH framework: 4/4 models fitted.")
 message("Pre-fit ARCH-LM p-value: ", format(pre_arch$p.value, scientific = TRUE))
-print(diagnostic_summary_rows)
+print(diagnostic_summary)

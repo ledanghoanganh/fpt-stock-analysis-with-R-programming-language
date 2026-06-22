@@ -1,4 +1,6 @@
-# Ghép metric và diagnostics, nhưng giữ price forecast tách khỏi volatility.
+# MODULE 05 - SO SÁNH VÀ LỰA CHỌN MÔ HÌNH
+# Module chỉ ghép output từ 03/04; không fit lại model.
+# Price forecast và volatility luôn ở hai bảng vì khác response và metric.
 source("R/00_config.R")
 
 # Mỗi file này là output bắt buộc của script 03 hoặc 04.
@@ -15,8 +17,14 @@ if (any(!file.exists(input_paths))) {
 }
 tables <- purrr::map(input_paths, readr::read_csv, show_col_types = FALSE)
 
-# ARIMAX có nhãn dài ở bảng metric nhưng nhãn ngắn ở diagnostics; key nối phải đồng nhất.
-model_key <- function(name) if_else(str_detect(name, regex("^ARIMAX", TRUE)), "ARIMAX", name)
+#' Chuẩn hóa tên model trước khi join các bảng forecast
+#'
+#' @param name Character vector chứa nhãn model.
+#' @return Character vector trong đó mọi biến thể tên ARIMAX được đổi thành `ARIMAX`.
+#' @details Chỉ key tạm được chuẩn hóa; tên hiển thị trong output vẫn được giữ.
+model_key <- function(name) {
+  if_else(str_detect(name, regex("^ARIMAX", TRUE)), "ARIMAX", name)
+}
 
 # ----- Price forecast: holdout + rolling CV + residual diagnostics. -----
 assert_columns(tables$forecast, c("model", "split", "rmse", "mae", "mape"), "Forecast")
@@ -81,7 +89,8 @@ volatility_comparison <- tables$garch %>%
     persistence_warning = persistence >= 0.995
   )
 
-# Candidate phải qua core diagnostics và stability; AIC chỉ xếp hạng trong nhóm đó.
+# Quy tắc production: lọc theo diagnostics/stability trước, chỉ dùng AIC để xếp
+# hạng các model đủ điều kiện. Nhờ vậy model AIC thấp nhưng bất ổn không được chọn.
 eligible <- filter(volatility_comparison, core_diagnostics_pass, parameter_stability_pass)
 candidate <- if (nrow(eligible)) eligible$model[which.min(eligible$aic)] else NA_character_
 volatility_comparison <- volatility_comparison %>%

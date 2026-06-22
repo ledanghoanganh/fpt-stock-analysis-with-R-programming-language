@@ -15,6 +15,7 @@ Thumbs.db
 .agents/
 local_docs/
 .tmp_person3_slides
+.tmp_garch_baseline/
 
 # Regenerated local model bundle; final tables/figures are committed separately
 output/models/garch_fits.rds

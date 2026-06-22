@@ -1,4 +1,6 @@
-# Làm sạch dữ liệu OHLCV và tạo log return dùng cho toàn bộ mô hình.
+# MODULE 01 - LÀM SẠCH DỮ LIỆU
+# Input: raw OHLCV từ notebook. Output: clean CSV và quality report.
+# Đây là nơi duy nhất sửa dữ liệu; các module sau chỉ đọc dữ liệu sạch.
 source("R/00_config.R")
 
 # Sáu cột này là hợp đồng dữ liệu giữa notebook và pipeline R.
@@ -20,7 +22,17 @@ checked <- raw %>%
 
 # Bỏ qua chênh lệch floating-point nhỏ hơn 1e-8 khi kiểm tra quan hệ OHLC.
 OHLC_TOLERANCE <- 1e-8
+
+#' Phát hiện hàng có high thấp hơn open hoặc close
+#'
+#' @param data Bảng có các cột `open`, `high` và `close`.
+#' @return Logical vector; `TRUE` tại hàng vi phạm vượt tolerance.
 invalid_high <- function(data) data$high + OHLC_TOLERANCE < pmax(data$open, data$close)
+
+#' Phát hiện hàng có low cao hơn open hoặc close
+#'
+#' @param data Bảng có các cột `open`, `low` và `close`.
+#' @return Logical vector; `TRUE` tại hàng vi phạm vượt tolerance.
 invalid_low <- function(data) data$low - OHLC_TOLERANCE > pmin(data$open, data$close)
 
 # Tạo một hàng quality report cho mỗi điều kiện để dễ audit và trình bày.

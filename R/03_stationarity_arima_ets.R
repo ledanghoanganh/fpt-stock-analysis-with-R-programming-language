@@ -1,4 +1,6 @@
-# Kiểm định tính dừng, fit forecast models và đánh giá ngoài mẫu.
+# MODULE 03 - TÍNH DỪNG VÀ DỰ BÁO GIÁ
+# Input: dữ liệu sạch. Output: ADF, holdout/CV metrics, diagnostics, RDS và PNG.
+# Mọi split giữ nguyên thứ tự thời gian; tuyệt đối không shuffle quan sát.
 source("R/00_config.R")
 require_packages(c("tseries", "forecast", "ggplot2"))
 
@@ -7,7 +9,12 @@ HOLDOUT_SIZE <- 30
 CV_HORIZON <- 20
 CV_STEP <- 20
 
-# Tính ba metric trên cùng vector actual/predicted; giá phải dương để MAPE hợp lệ.
+#' Tính RMSE, MAE và MAPE cho một vector dự báo
+#'
+#' @param actual Numeric vector chứa giá thực tế dương.
+#' @param predicted Numeric vector dự báo có cùng độ dài với `actual`.
+#' @return Tibble một hàng với ba metric; metric nhỏ hơn là tốt hơn.
+#' @details Hàm dừng nếu hai vector lệch độ dài hoặc actual không dương.
 forecast_metrics <- function(actual, predicted) {
   if (!length(actual) || length(actual) != length(predicted)) stop("Forecast length không hợp lệ.")
   if (any(actual <= 0, na.rm = TRUE)) stop("Actual phải dương để tính MAPE.")
@@ -19,7 +26,12 @@ forecast_metrics <- function(actual, predicted) {
   )
 }
 
-# Chuyển kết quả adf.test thành một hàng tidy để báo cáo đọc trực tiếp.
+#' Chạy kiểm định ADF và chuẩn hóa kết quả thành một hàng
+#'
+#' @param values Numeric vector của chuỗi cần kiểm định; `NA` được loại.
+#' @param series_name Nhãn chuỗi hiển thị trong báo cáo.
+#' @return Tibble một hàng gồm statistic, p-value và kết luận mức 5%.
+#' @details H0 của ADF là chuỗi có unit root; p-value nhỏ dẫn đến bác bỏ H0.
 adf_row <- function(values, series_name) {
   test <- suppressWarnings(tseries::adf.test(stats::na.omit(values)))
   tibble(
@@ -30,7 +42,13 @@ adf_row <- function(values, series_name) {
   )
 }
 
-# Fit toàn bộ final-split models; mỗi model dùng đúng cùng train và horizon.
+#' Fit các mô hình dự báo trên final train/test split
+#'
+#' @param train Bảng train đã có `close` và ba biến trễ cho ARIMAX.
+#' @param test Bảng holdout; số hàng xác định forecast horizon.
+#' @return List gồm `models` (fitted objects) và `forecasts` (7 dự báo).
+#' @details Naive/Drift chỉ tạo forecast; năm statistical models được giữ để
+#'   tính AIC/BIC, diagnostics và lưu RDS.
 fit_final_models <- function(train, test) {
   train_ts <- ts(train$close, frequency = 1)
   seasonal_ts <- ts(train$close, frequency = 5)
@@ -66,13 +84,23 @@ model_labels <- c(
   ETS = "ETS", ETS_Damped = "ETS Damped", ARIMAX = "ARIMAX (Lagged)"
 )
 
-# Tính metric cho một named list forecast mà không lặp bảy đoạn code giống nhau.
+#' Chấm điểm nhiều forecast object trên cùng actual vector
+#'
+#' @param forecasts Named list các object trả về từ package `forecast`.
+#' @param actual Numeric vector chứa giá thực tế.
+#' @return Tibble có một hàng cho mỗi model và các cột RMSE, MAE, MAPE.
 score_forecasts <- function(forecasts, actual) {
   purrr::imap_dfr(forecasts, ~ forecast_metrics(actual, .x$mean) %>%
                     mutate(model = model_labels[[.y]], .before = 1))
 }
 
-# Vẽ forecast interval và actual; actual bắt đầu ngay sau điểm cuối của train ts.
+#' Vẽ và lưu forecast cùng giá thực tế của holdout
+#'
+#' @param forecast_object Forecast object có train series và prediction interval.
+#' @param actual Numeric vector của holdout.
+#' @param title Nhãn model dùng trong tiêu đề.
+#' @param filename Tên PNG trong `output/figures`.
+#' @return Không trả dữ liệu; side effect là ghi file PNG 300 DPI.
 save_forecast_plot <- function(forecast_object, actual, title, filename) {
   frequency <- stats::frequency(forecast_object$x)
   actual_ts <- ts(actual, start = end(forecast_object$x)[1] + 1 / frequency,
@@ -89,7 +117,12 @@ save_forecast_plot <- function(forecast_object, actual, title, filename) {
          dpi = 300, bg = "white")
 }
 
-# Ljung-Box kiểm tra residual còn autocorrelation sau khi fit hay không.
+#' Chạy Ljung-Box và lưu hình diagnostics cho một fitted forecast model
+#'
+#' @param model Fitted ARIMA/ETS object.
+#' @param name Tên model dùng trong bảng và tên file.
+#' @return Tibble một hàng gồm Ljung-Box statistic, p-value, lag và kết luận.
+#' @details Side effect: tạo PNG gồm residual series, ACF và PACF.
 diagnose_model <- function(model, name) {
   residuals <- stats::residuals(model)
   fitdf <- if (inherits(model, "ARIMA")) sum(model$arma[c(1, 2)]) else length(model$par)
@@ -114,7 +147,13 @@ diagnose_model <- function(model, name) {
   )
 }
 
-# Một CV fold chỉ fit năm model có cùng coverage trong thiết kế hiện tại.
+#' Chạy và chấm điểm một rolling-origin fold
+#'
+#' @param data Bảng model data đã sắp theo thời gian.
+#' @param train_end Chỉ số hàng cuối của train window.
+#' @param horizon Số phiên liên tiếp trong validation window.
+#' @param fold_id Mã fold dùng khi ghép kết quả.
+#' @return Tibble metric cho 5 model có cùng CV coverage, kèm cột `split`.
 score_cv_fold <- function(data, train_end, horizon, fold_id) {
   train <- data[seq_len(train_end), ]
   test <- data[train_end + seq_len(horizon), ]
@@ -131,7 +170,13 @@ score_cv_fold <- function(data, train_end, horizon, fold_id) {
   score_forecasts(fits, test$close) %>% mutate(split = fold_id)
 }
 
-# Rolling-origin mở rộng train theo thời gian và tổng hợp metric qua mọi fold.
+#' Chạy rolling-origin cross-validation với expanding window
+#'
+#' @param data Bảng model data đã sắp theo thời gian.
+#' @param initial Số quan sát của train window đầu tiên.
+#' @param horizon Số phiên dự báo trong mỗi fold.
+#' @param step Số phiên dịch origin giữa hai fold liên tiếp.
+#' @return List gồm `raw` (metric từng fold) và `summary` (trung bình/trung vị).
 run_rolling_cv <- function(data, initial, horizon = CV_HORIZON, step = CV_STEP) {
   origins <- seq(initial, nrow(data) - horizon, by = step)
   raw <- purrr::imap_dfr(origins, ~ score_cv_fold(data, .x, horizon, .y))
