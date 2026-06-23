@@ -6,146 +6,215 @@
 >
 > **Giảng viên:** TS. Phan Thị Thể
 >
-> **Bài toán:** Dự báo mức giá và phân tích conditional volatility của cổ phiếu FPT
->
-> **Công nghệ chính:** R, R Markdown; Python/Google Colab cho bước thu thập dữ liệu
+> **Đề tài:** Phân tích chuỗi thời gian, dự báo giá và mô hình hóa biến động của cổ phiếu FPT
 
-## Tổng quan
+## 1. Giới thiệu
 
-Dự án triển khai một quy trình phân tích chuỗi thời gian có thể tái lập:
+Dự án xây dựng một pipeline phân tích chuỗi thời gian bằng R cho cổ phiếu FPT. Dữ liệu được thu thập từ Yahoo Finance với ticker `FPT.VN`, sau đó được làm sạch, trực quan hóa, kiểm định tính dừng, mô hình hóa giá và mô hình hóa biến động lợi suất.
 
-1. Thu thập và kiểm tra dữ liệu OHLCV của FPT.
-2. Làm sạch, tạo `log_close` và log return.
-3. Trực quan hóa mức giá, volume và return.
-4. Kiểm định tính dừng bằng ADF.
-5. So sánh benchmark và các mô hình dự báo giá.
-6. Kiểm tra ARCH effect và so sánh các biến thể GARCH.
-7. Kiểm tra residual, stability, distribution fit và tổng hợp báo cáo Word.
+Dự án tách rõ hai bài toán:
 
-Dự án tách hai câu hỏi khác nhau:
+1. **Dự báo giá đóng cửa:** so sánh Naive, Drift, ARIMA, SARIMA, ETS, ETS Damped và ARIMAX.
+2. **Mô hình hóa conditional volatility:** so sánh sGARCH-Normal, sGARCH-Student-t, eGARCH-Student-t và GJR-GARCH-Student-t.
 
-- **Dự báo mức giá:** đánh giá bằng RMSE, MAE, MAPE và rolling-origin cross-validation.
-- **Mô hình hóa volatility:** đánh giá bằng convergence, likelihood, AIC/BIC, persistence và residual diagnostics.
+Kết quả chỉ phục vụ mục tiêu học thuật, không phải khuyến nghị đầu tư.
 
-Hai nhóm model không được xếp hạng chung vì chúng giải quyết hai response và dùng các metric khác nhau.
+## 2. Thành viên
 
-## Trạng thái hiện tại
+| Thành viên | MSSV | Tỷ lệ đóng góp | Phạm vi chính |
+|---|---:|---:|---|
+| Trần Thiên Lực | 24133037 | 30% | Thu thập dữ liệu, làm sạch, kiểm tra chất lượng, EDA |
+| Nguyễn Đức Học | 24162039 | 35% | ADF, forecast models, rolling-origin CV, residual diagnostics |
+| Lê Đặng Hoàng Anh | 24162006 | 35% | GARCH models, diagnostics, model comparison, tích hợp báo cáo |
 
-Snapshot hiện tại đã có:
+## 3. Dữ liệu
 
-- Benchmark Naive và Drift.
-- ARIMA, SARIMA, ARIMAX với biến trễ, ETS và ETS Damped.
-- sGARCH-Normal, sGARCH-Student-t, eGARCH-Student-t và GJR-GARCH-Student-t.
-- Holdout 30 phiên, rolling-origin CV cho nhóm model đã triển khai và forecast residual diagnostics.
-- ARCH-LM, Ljung-Box, sign-bias, Nyblom stability và adjusted Pearson GOF cho GARCH.
-- Hai bảng so sánh độc lập cho forecast-price và volatility.
-- Báo cáo R Markdown đủ cấu trúc rubric và file Word đã render.
-
-### Trạng thái nghiệm thu cuối
-
-- Pipeline đầu-cuối đã chạy thành công ngày 21/06/2026 bằng R 4.6.0.
-- Toàn bộ CSV, hình, workbook và model đã được tái sinh từ dữ liệu hiện tại.
-- `report/report.docx` và `presentation/khung_noi_dung_slide.docx` đã render thành công.
-- Thông tin thành viên, MSSV, tỷ lệ đóng góp và Nhóm 06 đã được tích hợp.
-
-Data handoff đã hoàn tất: notebook, raw CSV và tài liệu cùng dùng Yahoo Finance
-(`FPT.VN`); 173 dòng `volume = 0` đã bị loại trước khi mô hình hóa.
-
-## Dữ liệu
-
-| Thuộc tính | Giá trị hiện tại |
+| Thuộc tính | Giá trị |
 |---|---|
-| Mã cổ phiếu | FPT, HOSE |
-| Khoảng thời gian | 2015-01-01 đến 2026-06-08 |
-| Số quan sát dữ liệu thô | 2,960 dòng |
-| Số quan sát dữ liệu sạch | 2,787 dòng |
+| Mã cổ phiếu | `FPT.VN` |
+| Nguồn | Yahoo Finance |
+| Giai đoạn raw | 2015-01-01 đến 2026-06-08 |
+| Số dòng raw | 2,960 |
+| Số dòng clean | 2,787 |
 | Số log return hợp lệ | 2,786 |
 | File raw | `data/raw/FPT_stock_data.csv` |
-| File model input | `data/processed/fpt_clean.csv` |
+| File clean | `data/processed/fpt_clean.csv` |
 
-Tệp sạch hiện có các cột:
+Quy trình cleaning loại 173 dòng `volume = 0`, kiểm tra missing value, duplicate date, non-positive price, negative volume và sửa 1 dòng OHLC bất thường sau khi lọc volume.
+
+Các biến chính trong dữ liệu sạch:
 
 | Cột | Ý nghĩa |
 |---|---|
-| `date` | Ngày quan sát |
-| `open`, `high`, `low`, `close` | Dữ liệu giá OHLC |
+| `date` | Ngày giao dịch |
+| `open`, `high`, `low`, `close` | Giá OHLC |
 | `volume` | Khối lượng giao dịch |
-| `log_close` | `log(close)` |
-| `return` | `log(close_t) - log(close_(t-1))` |
+| `log_close` | Logarit tự nhiên của giá đóng cửa |
+| `return` | Log return: `log(close_t) - log(close_(t-1))` |
 
-### Lưu ý về provenance
+## 4. Pipeline
 
-Dữ liệu được tải từ Yahoo Finance bằng notebook tái lập tại
-`notebooks/01_scrape_fpt_colab.ipynb` với `auto_adjust = TRUE`. Notebook xuất
-đúng tên `FPT_stock_data.csv`; quy trình làm sạch và quality report được mô tả
-trong [`data/README_data.md`](data/README_data.md).
+```text
+data/raw/FPT_stock_data.csv
+        |
+        v
+R/01_data_cleaning.R
+        |
+        v
+data/processed/fpt_clean.csv
+        |
+        +--> R/02_visualization.R
+        +--> R/03_stationarity_arima_ets.R
+        +--> R/04_garch_volatility.R
+        |
+        v
+R/05_model_comparison.R
+        |
+        v
+R/06_export_report_tables.R
+        |
+        v
+report/report.Rmd -> report/report.docx
+```
 
-## Hệ thống mô hình
+Entry point chạy toàn bộ:
 
-### Dự báo giá
+```r
+source("R/run_all.R")
+```
+
+Pipeline cuối đã chạy thành công lúc `2026-06-23 11:43:26`; xem `output/pipeline_log.txt`.
+
+## 5. Mô hình sử dụng
+
+### 5.1 Dự báo giá
 
 | Model | Vai trò |
 |---|---|
-| Naive | Random-walk benchmark |
-| Drift | Random walk có độ trôi |
-| ARIMA | Mô hình AR-I-MA tự động |
-| SARIMA | Kiểm tra thành phần mùa vụ |
-| ETS | Exponential smoothing state-space |
+| Naive | Benchmark random walk |
+| Drift | Random walk có drift |
+| ARIMA | Mô hình ARIMA tự động |
+| SARIMA | ARIMA có yếu tố mùa vụ |
+| ETS | Exponential smoothing |
 | ETS Damped | ETS với damped trend |
-| ARIMAX (Lagged) | ARIMA với biến giải thích trễ |
+| ARIMAX | ARIMA với biến giải thích trễ |
 
-Các model được đánh giá trên holdout 30 phiên. Rolling-origin CV hiện có cho Naive, Drift, ARIMA, ETS và ETS Damped; ARIMAX và SARIMA chưa có cùng coverage CV nên chưa thể tuyên bố một winner tuyệt đối.
+Đánh giá forecast dùng holdout 30 phiên cuối và rolling-origin cross-validation cho nhóm model có cùng coverage.
 
-### Conditional volatility
+### 5.2 Conditional volatility
 
 | Model | Distribution | Mục tiêu |
 |---|---|---|
 | sGARCH(1,1) | Normal | Baseline đối xứng |
 | sGARCH(1,1) | Student-t | Kiểm tra heavy tails |
-| eGARCH(1,1) | Student-t | Log variance và asymmetry |
-| GJR-GARCH(1,1) | Student-t | Indicator cho shock âm |
+| eGARCH(1,1) | Student-t | Kiểm tra asymmetry qua log variance |
+| GJR-GARCH(1,1) | Student-t | Kiểm tra tác động khác nhau của shock âm |
 
-Tất cả specification dùng cùng chuỗi return và mean equation ARMA(0,0).
+Tất cả GARCH models dùng cùng chuỗi log return và mean equation ARMA(0,0).
 
-## Kết quả sau data handoff
+## 6. Kết quả chính
 
-### ADF
+### 6.1 Kiểm định ADF
 
-| Chuỗi | ADF statistic | p-value | Kết luận ở mức 5% |
+| Chuỗi | ADF statistic | p-value | Kết luận |
 |---|---:|---:|---|
-| `close` | -1.7892 | 0.6676 | Chưa đủ bằng chứng bác bỏ unit root |
-| `log_close` | -1.3194 | 0.8665 | Chưa đủ bằng chứng bác bỏ unit root |
-| `return` | -13.7914 | <= 0.01 | Bác bỏ unit root; return dừng |
+| Close | -1.7892 | 0.6676 | Không dừng |
+| Log close | -1.3194 | 0.8665 | Không dừng |
+| Log return | -13.7914 | 0.0100 | Dừng |
 
-### Forecast-price
+Kết quả này giải thích vì sao phần GARCH dùng `return`, không dùng trực tiếp `close`.
 
-- **Holdout leader:** ETS Damped, RMSE `1,939.13`, MAE `1,524.15`, MAPE `2.10%`.
-- ETS Damped chỉ hơn Naive khoảng `0.72` RMSE trên holdout.
-- **Rolling-CV leader:** Naive, mean RMSE `5,353.94`; ETS Damped đạt `5,404.76`.
-- Tất cả fitted forecast models đều bị Ljung-Box bác bỏ white-noise residual ở mức 5%.
-- ARIMAX và SARIMA chưa có rolling CV trong output hiện tại.
+### 6.2 Dự báo giá
 
-Kết luận: chưa có bằng chứng model phức tạp cải thiện Naive một cách ổn định.
+| Model | Holdout RMSE | Holdout MAPE | CV mean RMSE |
+|---|---:|---:|---:|
+| ETS Damped | 1,939.13 | 2.10% | 5,404.76 |
+| Naive | 1,939.85 | 2.11% | 5,353.94 |
+| SARIMA | 1,982.52 | 2.19% | NA |
+| ETS | 1,987.03 | 2.08% | 5,477.37 |
+| Drift | 2,021.03 | 2.23% | 5,396.80 |
+| ARIMAX | 2,025.75 | 2.24% | NA |
+| ARIMA | 2,119.64 | 2.38% | 6,501.47 |
 
-Xem [`output/tables/price_forecast_comparison.csv`](output/tables/price_forecast_comparison.csv).
+ETS Damped đứng đầu holdout nhưng chỉ hơn Naive khoảng 0.72 RMSE. Trong rolling-origin CV, Naive tốt nhất trong nhóm được đánh giá đầy đủ. Vì vậy dự án không tuyên bố một model phức tạp thắng ổn định trong bài toán dự báo giá.
 
-### Volatility
+### 6.3 Volatility
 
-| Model | AIC | Persistence | Core diagnostics | Nyblom joint 5% |
+| Model | AIC | Persistence | Core diagnostics | Stability |
 |---|---:|---:|---|---|
-| GJR-GARCH Student-t | -5.634427 | 0.985742 | Đạt | Không đạt |
-| eGARCH Student-t | -5.633058 | 0.962670 | Đạt | Đạt |
-| sGARCH Student-t | -5.631732 | 0.989137 | Đạt | Không đạt |
-| sGARCH Normal | -5.507300 | 0.964510 | Đạt | Không đạt |
+| GJR-GARCH Student-t | -5.6344 | 0.9857 | Đạt | Không đạt |
+| eGARCH Student-t | -5.6331 | 0.9627 | Đạt | Đạt |
+| sGARCH Student-t | -5.6317 | 0.9891 | Đạt | Không đạt |
+| sGARCH Normal | -5.5073 | 0.9645 | Đạt | Không đạt |
 
-eGARCH-Student-t là **ứng viên cân bằng** vì AIC chỉ kém GJR khoảng `0.00137`,
-core residual diagnostics đạt và Nyblom joint stability đạt. Adjusted Pearson
-GOF vẫn bác bỏ distribution fit cho tất cả model, nên lựa chọn này phải được
-trình bày cùng hạn chế phân phối.
+GJR-GARCH có AIC thấp nhất nhưng không đạt Nyblom stability. eGARCH-Student-t có AIC gần GJR, core diagnostics đạt và parameter stability đạt, nên được chọn là candidate cân bằng nhất. Adjusted Pearson GOF vẫn bác bỏ distribution fit cho tất cả GARCH models, đây là hạn chế cần nêu rõ.
 
-Xem [`output/tables/volatility_model_comparison.csv`](output/tables/volatility_model_comparison.csv).
+## 7. Output cần xem
 
-## Cấu trúc repository
+### Báo cáo
+
+| File | Nội dung |
+|---|---|
+| `report/report.Rmd` | Source báo cáo tái lập |
+| `report/report.docx` | Báo cáo Word đã render |
+| `output/pipeline_log.txt` | Log chạy pipeline |
+
+### Tables
+
+| File | Nội dung |
+|---|---|
+| `output/tables/data_quality_report.csv` | Kiểm tra chất lượng dữ liệu |
+| `output/tables/data_summary.csv` | Thống kê mô tả |
+| `output/tables/stationarity_tests.csv` | Kết quả ADF |
+| `output/tables/forecast_metrics.csv` | Metric holdout |
+| `output/tables/forecast_cv_metrics_summary.csv` | Tổng hợp rolling CV |
+| `output/tables/forecast_diagnostics.csv` | Ljung-Box forecast residuals |
+| `output/tables/price_forecast_comparison.csv` | So sánh forecast tổng hợp |
+| `output/tables/garch_comparison.csv` | So sánh GARCH theo likelihood, AIC/BIC, persistence |
+| `output/tables/garch_parameters.csv` | Tham số và robust standard error |
+| `output/tables/garch_diagnostic_summary.csv` | Tóm tắt diagnostics GARCH |
+| `output/tables/volatility_model_comparison.csv` | Quy tắc chọn volatility model |
+| `output/tables/report_tables.xlsx` | Workbook tổng hợp bảng |
+
+### Figures
+
+| File | Nội dung |
+|---|---|
+| `output/figures/close_price.png` | Giá đóng cửa FPT |
+| `output/figures/volume.png` | Khối lượng giao dịch |
+| `output/figures/returns.png` | Log return |
+| `output/figures/squared_returns.png` | Squared return và volatility clustering |
+| `output/figures/return_distribution.png` | Phân phối log return |
+| `output/figures/qqplot_return.png` | Q-Q plot của log return |
+| `output/figures/acf_return.png` | ACF return |
+| `output/figures/pacf_return.png` | PACF return |
+| `output/figures/ets_damped_forecast.png` | Forecast ETS Damped |
+| `output/figures/ets_damped_residual_diagnostics.png` | Diagnostics của ETS Damped |
+| `output/figures/garch_model_comparison.png` | Conditional volatility của 4 GARCH models |
+| `output/figures/garch_acf_diagnostics.png` | ACF diagnostics cho standardized residuals |
+| `output/figures/garch_news_impact.png` | News-impact curves |
+
+### Models
+
+| File | Nội dung |
+|---|---|
+| `output/models/arima_model.rds` | Fitted ARIMA |
+| `output/models/sarima_model.rds` | Fitted SARIMA |
+| `output/models/ets_model.rds` | Fitted ETS |
+| `output/models/ets_damped_model.rds` | Fitted ETS Damped |
+| `output/models/arima_xreg_model.rds` | Fitted ARIMAX |
+| `output/models/garch_model.rds` | Baseline sGARCH-Normal |
+| `output/models/garch_candidate_model.rds` | Candidate eGARCH-Student-t |
+| `output/models/garch_fits.rds` | Named list chứa 4 fitted GARCH models |
+
+Ví dụ load model:
+
+```r
+model <- readRDS("output/models/ets_damped_model.rds")
+forecast::forecast(model, h = 10)
+```
+
+## 8. Cấu trúc thư mục
 
 ```text
 .
@@ -164,7 +233,8 @@ Xem [`output/tables/volatility_model_comparison.csv`](output/tables/volatility_m
 │   ├── 03_stationarity_arima_ets.R
 │   ├── 04_garch_volatility.R
 │   ├── 05_model_comparison.R
-│   └── 06_export_report_tables.R
+│   ├── 06_export_report_tables.R
+│   └── run_all.R
 ├── output/
 │   ├── figures/
 │   ├── models/
@@ -172,55 +242,32 @@ Xem [`output/tables/volatility_model_comparison.csv`](output/tables/volatility_m
 ├── report/
 │   ├── report.Rmd
 │   ├── report.docx
-│   └── sections/                 # Bản chương tham khảo; report.Rmd đã tích hợp đầy đủ
+│   └── sections/
+├── presentation/
 └── docs/
-    ├── MASTER_DOCUMENTATION.md
-    ├── ke_hoach_nguoi_2_3_hom_nay.md
-    ├── ly_thuyet_project.md
-    ├── phan_cong_mo_hinh_cai_tien.md
-    ├── phan_cong_sau_data_handoff.md
-    ├── PR_Person2.md
-    └── rubric/
+    └── MASTER_DOCUMENTATION.md
 ```
 
-`local_docs/` được `.gitignore` và chỉ dùng cho ghi chú/script học tập cá nhân.
+## 9. Cách chạy
 
-## Cài đặt
+Khuyến nghị dùng R 4.6.0 và RStudio.
 
-Khuyến nghị dùng R 4.6.0 và RStudio trên Windows 11. Cài dependency một lần trong R Console:
+Cài package:
 
 ```r
 install.packages(c(
-  "tidyverse",
-  "lubridate",
-  "forecast",
-  "tseries",
-  "urca",
-  "FinTS",
-  "rugarch",
-  "scales",
-  "knitr",
-  "rmarkdown",
-  "openxlsx"
+  "tidyverse", "lubridate", "forecast", "tseries", "urca",
+  "FinTS", "rugarch", "scales", "knitr", "rmarkdown", "openxlsx"
 ))
 ```
 
-Nên cài dependency trước khi chạy. `R/06_export_report_tables.R` hiện vẫn có fallback cài `openxlsx` nếu thiếu; các module còn lại sẽ dừng và báo package cần bổ sung.
-
-## Cách chạy
-
-Mở `FPT_Stock_TimeSeries.Rproj`, bảo đảm working directory là thư mục gốc rồi chạy:
+Chạy toàn bộ pipeline:
 
 ```r
-source("R/01_data_cleaning.R")
-source("R/02_visualization.R")
-source("R/03_stationarity_arima_ets.R")
-source("R/04_garch_volatility.R")
-source("R/05_model_comparison.R")
-source("R/06_export_report_tables.R")
+source("R/run_all.R")
 ```
 
-Render báo cáo:
+Render riêng báo cáo:
 
 ```r
 rmarkdown::render(
@@ -230,66 +277,16 @@ rmarkdown::render(
 )
 ```
 
-Báo cáo chỉ đọc CSV/PNG đã sinh, không chạy lại model trong lúc knit.
+## 10. Hạn chế
 
-## Output chính
+- Dữ liệu chỉ gồm một ticker `FPT.VN`.
+- Chưa đưa VN-Index, tin tức, biến vĩ mô hoặc dữ liệu intraday vào mô hình.
+- Holdout forecast chỉ gồm 30 phiên cuối.
+- SARIMA và ARIMAX chưa có rolling CV cùng coverage với toàn bộ nhóm model.
+- Forecast residual diagnostics chưa ủng hộ kết luận model phức tạp thắng ổn định.
+- GARCH chưa có out-of-sample volatility loss, QLIKE hoặc VaR backtest.
+- Adjusted Pearson GOF vẫn bác bỏ distribution fit của tất cả GARCH specifications.
 
-### Forecast
+## 11. Kết luận ngắn
 
-| Output | Nội dung |
-|---|---|
-| `forecast_metrics.csv` | Holdout RMSE/MAE/MAPE |
-| `forecast_cv_metrics_raw.csv` | Metric theo từng rolling fold |
-| `forecast_cv_metrics_summary.csv` | Tổng hợp rolling CV |
-| `forecast_diagnostics.csv` | Ljung-Box forecast residuals |
-| `price_forecast_comparison.csv` | Holdout + CV + diagnostics |
-| `ets_damped_forecast.png` | Dự báo ETS Damped, model được trình bày trong báo cáo |
-| `ets_damped_residual_diagnostics.png` | Residual diagnostics của ETS Damped |
-| `output/models/*_model.rds` | Fitted forecast models để load thử nhanh |
-
-### GARCH
-
-| Output | Nội dung |
-|---|---|
-| `garch_parameters.csv` | Estimate và robust standard error |
-| `garch_comparison.csv` | Likelihood, AIC/BIC, persistence |
-| `garch_diagnostics.csv` | Bảng dài toàn bộ diagnostic tests |
-| `garch_diagnostic_summary.csv` | Tóm tắt diagnostics theo model |
-| `volatility_model_comparison.csv` | Fit + diagnostics + provisional rule |
-| `garch_model_comparison.png` | Conditional volatility của bốn model |
-| `garch_acf_diagnostics.png` | ACF standardized residuals |
-| `garch_news_impact.png` | News-impact curves của model bất đối xứng |
-| `garch_fits.rds` | Named list chứa cả bốn fitted GARCH models |
-| `garch_model.rds` | sGARCH-Normal baseline để chạy thử nhanh |
-| `garch_candidate_model.rds` | eGARCH-Student-t, candidate cân bằng trong báo cáo |
-
-### Báo cáo
-
-- [`report/report.Rmd`](report/report.Rmd): nguồn báo cáo tái lập, đủ 11 phần rubric.
-- [`report/report.docx`](report/report.docx): Word đã render và nhúng bảng/hình.
-- `output/tables/report_tables.xlsx`: workbook hỗ trợ kiểm tra bảng.
-- [`presentation/khung_noi_dung_slide.docx`](presentation/khung_noi_dung_slide.docx): khung nội dung để nhóm hoàn thiện PowerPoint.
-
-## Phân công
-
-| Thành viên | Tỷ lệ | Phạm vi |
-|---|---:|---|
-| Trần Thiên Lực - 24133037 | 30% | Data provenance, cleaning, quality checks và visualization |
-| Nguyễn Đức Học - 24162039 | 35% | Forecast framework, benchmark, rolling CV và residual diagnostics |
-| Lê Đặng Hoàng Anh - 24162006 | 35% | GARCH variants, diagnostics, model comparison, báo cáo và khung slide |
-
-Chi tiết đóng góp và peer assessment được trình bày trong báo cáo.
-
-## Tài liệu dự án
-
-- [Tài liệu tổng hợp toàn bộ dự án](docs/MASTER_DOCUMENTATION.md)
-- [Hướng dẫn học và bảo vệ dành riêng cho Người 3](docs/GUIDE_NGUOI_3.md)
-- [Rubric và yêu cầu](docs/rubric/)
-- [Lý thuyết nền tảng](docs/ly_thuyet_project.md)
-- [Phân công mô hình cải tiến](docs/phan_cong_mo_hinh_cai_tien.md)
-
-## Giới hạn sử dụng
-
-Đây là đồ án học thuật. Kết quả dự báo và volatility không phải khuyến nghị mua,
-bán, định giá hay quản trị rủi ro thực tế. Mọi kết luận cuối phải được kiểm tra
-chéo với các CSV trong `output/tables`.
+Dự án cho thấy log return của FPT có tính dừng và có ARCH effect rõ, phù hợp để mô hình hóa conditional volatility. Với bài toán forecast giá, ETS Damped đứng đầu holdout nhưng chưa vượt Naive một cách ổn định khi xét rolling CV và residual diagnostics. Với volatility, eGARCH-Student-t là lựa chọn cân bằng nhất trong các specification đã thử, nhưng kết quả vẫn cần được trình bày cùng hạn chế về distribution fit và thiếu đánh giá volatility ngoài mẫu.
