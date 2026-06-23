@@ -1,4 +1,4 @@
-# Phân tích và dự báo cổ phiếu FPT bằng R
+# Dự báo giá và phân tích biến động cổ phiếu FPT bằng mô hình chuỗi thời gian
 
 > **Môn học:** Lập trình R cho phân tích
 >
