@@ -725,12 +725,7 @@ heavy tails. QQ plot không tự chọn chính xác distribution tốt nhất.
 Squared return loại dấu và giữ độ lớn. Các spike theo cụm là dấu hiệu trực quan
 của variance thay đổi theo thời gian.
 
-## 9.8 `return_by_weekday.png`
-
-Boxplot theo thứ trong tuần chỉ là exploratory evidence. Chênh lệch boxplot
-không chứng minh weekday effect nếu chưa có kiểm định và kiểm soát nhiều yếu tố.
-
-## 9.9 ACF và PACF
+## 9.8 ACF và PACF
 
 ACF đo tương quan giữa chuỗi và chính nó ở các lag. PACF đo tương quan riêng
 phần sau khi kiểm soát các lag ngắn hơn.
@@ -1305,7 +1300,6 @@ RAW_DATA_PATH <- "data/raw/FPT_stock_data.csv"
 CLEAN_DATA_PATH <- "data/processed/fpt_clean.csv"
 FIGURE_DIR <- "output/figures"
 TABLE_DIR <- "output/tables"
-MODEL_DIR <- "output/models"
 ```
 
 ### Vì sao cần config
@@ -1382,9 +1376,8 @@ khác hợp lệ là loại dòng và làm sensitivity analysis.
 4. `return_distribution.png`;
 5. `qqplot_return.png`;
 6. `squared_returns.png`;
-7. `return_by_weekday.png`;
-8. `acf_return.png`;
-9. `pacf_return.png`.
+7. `acf_return.png`;
+8. `pacf_return.png`.
 
 ### Cách đọc code ggplot
 
@@ -1452,21 +1445,16 @@ nhiều fold; final model dùng tìm kiếm kỹ hơn. Đây là trade-off tính
 - `forecast_cv_metrics_raw.csv`;
 - `forecast_cv_metrics_summary.csv`;
 - `forecast_diagnostics.csv`;
-- `model_aic_bic_comparison.csv`;
-- forecast figures;
-- model RDS.
+- `ets_damped_forecast.png`;
+- `ets_damped_residual_diagnostics.png`.
 
-### RDS là gì
+### Vì sao không lưu toàn bộ forecast figure nhưng vẫn lưu RDS
 
-RDS lưu một object R:
-
-```r
-saveRDS(model, "output/models/arima_model.rds")
-model <- readRDS("output/models/arima_model.rds")
-```
-
-RDS giúp dùng lại fitted model mà không refit, nhưng phải đảm bảo nó được tạo
-từ đúng phiên bản data.
+Dự án đã được tinh giản để chỉ giữ artifact phục vụ báo cáo. Các forecast khác
+vẫn được fit và chấm điểm trong CSV, nhưng không xuất hình riêng vì báo cáo chỉ
+trình bày ETS Damped như ví dụ minh họa. Tuy vậy, model RDS vẫn được lưu trong
+`output/models/` để người khác có thể load thử fitted model mà không cần chạy lại
+toàn bộ pipeline. Mọi kết luận chính vẫn phải dựa trên CSV/PNG tái lập từ code.
 
 ## 17.5 `R/04_garch_volatility.R`
 
@@ -1500,9 +1488,11 @@ Robust SE giảm độ nhạy khi likelihood không mô tả hoàn hảo dữ li
 - `garch_parameters.csv`;
 - `garch_diagnostics.csv`;
 - `garch_diagnostic_summary.csv`;
-- `garch_volatility.csv`;
-- `garch_fits.rds` và `garch_model.rds`;
-- 5 hình GARCH.
+- `garch_fits.rds`;
+- `garch_model.rds`;
+- `garch_candidate_model.rds`;
+- 3 hình GARCH dùng trong báo cáo: `garch_model_comparison.png`,
+  `garch_acf_diagnostics.png`, `garch_news_impact.png`.
 
 ## 17.6 `R/05_model_comparison.R`
 
@@ -1581,7 +1571,6 @@ thiếu artifact bắt buộc.
 | `forecast_cv_metrics_raw.csv` | metric từng fold | Người 2 |
 | `forecast_cv_metrics_summary.csv` | mean/median CV | Người 2 |
 | `forecast_diagnostics.csv` | Ljung-Box forecast residual | Người 2 |
-| `model_aic_bic_comparison.csv` | AIC/BIC forecast model | Người 2 |
 | `garch_comparison.csv` | fit và persistence | Người 3 |
 | `garch_parameters.csv` | coefficient và robust SE | Người 3 |
 | `garch_diagnostic_summary.csv` | diagnostics tóm tắt | Người 3 |
@@ -1592,19 +1581,33 @@ thiếu artifact bắt buộc.
 
 ## 18.2 `output/figures`
 
-EDA figures giải thích dữ liệu; forecast figures so sánh predicted/actual;
-residual figures chẩn đoán model; GARCH figures trình bày volatility và
-asymmetry.
+EDA figures giải thích dữ liệu; forecast chỉ giữ hình ETS Damped được đưa vào
+báo cáo; GARCH chỉ giữ ba hình phục vụ phần volatility và asymmetry.
 
 Không dùng hình mà không biết file nguồn và thông điệp của nó.
 
 ## 18.3 `output/models`
 
-- ARIMA/SARIMA/ETS/ARIMAX RDS;
-- `garch_fits.rds`: nhiều fitted GARCH;
-- `garch_model.rds`: baseline legacy output.
+Thư mục này lưu fitted R objects để kiểm thử nhanh:
 
-Model RDS không phải bằng chứng độc lập; phải đi cùng data hash, code và metric.
+- `arima_model.rds`;
+- `sarima_model.rds`;
+- `ets_model.rds`;
+- `ets_damped_model.rds`;
+- `arima_xreg_model.rds`;
+- `garch_fits.rds`;
+- `garch_model.rds`;
+- `garch_candidate_model.rds`.
+
+Ví dụ:
+
+```r
+model <- readRDS("output/models/ets_damped_model.rds")
+forecast::forecast(model, h = 10)
+```
+
+RDS giúp demo nhanh, nhưng không thay thế pipeline tái lập. Khi dữ liệu hoặc code
+đổi, nên chạy lại `R/run_all.R` để sinh lại model.
 
 ## 18.4 `output/pipeline_log.txt`
 

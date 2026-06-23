@@ -1,6 +1,4 @@
 # CẤU HÌNH DÙNG CHUNG
-# File này định nghĩa package, đường dẫn và ba helper được mọi module sử dụng.
-# Không đặt logic phân tích tại đây để tránh side effect khi source nhiều lần.
 
 # Nạp tidyverse cho thao tác bảng/đồ thị và lubridate cho ngày tháng.
 suppressPackageStartupMessages({
@@ -8,7 +6,6 @@ suppressPackageStartupMessages({
   library(lubridate)
 })
 
-# Gom đường dẫn vào một nơi để tránh mỗi script tự ghi chuỗi khác nhau.
 RAW_DATA_PATH <- "data/raw/FPT_stock_data.csv"
 CLEAN_DATA_PATH <- "data/processed/fpt_clean.csv"
 FIGURE_DIR <- "output/figures"

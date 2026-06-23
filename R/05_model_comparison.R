@@ -1,5 +1,4 @@
 # MODULE 05 - SO SÁNH VÀ LỰA CHỌN MÔ HÌNH
-# Module chỉ ghép output từ 03/04; price forecast và volatility luôn tách riêng.
 source("R/00_config.R")
 
 # Dữ liệu đã được kiểm tra ở module tạo ra chúng; read_csv sẽ dừng nếu thiếu file.

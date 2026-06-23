@@ -1,3 +1,0 @@
-"Series","ADF_Statistic","P_Value","Stationary"
-"Price (Close)",-1.78916674489471,0.667589212119642,"No (Fail to reject H0)"
-"Log Return",-13.7914441545864,0.01,"Yes (Reject H0)"

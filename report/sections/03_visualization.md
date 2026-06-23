@@ -42,7 +42,7 @@ include_required_figure("output/figures/qqplot_return.png")
 
 Các điểm lệch đường tham chiếu ở hai đuôi gợi ý heavy tails. Q-Q plot chỉ là chẩn đoán trực quan; adjusted Pearson GOF sau GARCH mới kiểm tra distribution fit định lượng.
 
-## Tự tương quan và yếu tố lịch
+## Tự tương quan
 
 ```{r acf-pacf-figures, fig.show='hold', out.width='48%', fig.cap="ACF (trái) và PACF (phải) của log return"}
 include_required_figure("output/figures/acf_return.png")
@@ -50,9 +50,3 @@ include_required_figure("output/figures/pacf_return.png")
 ```
 
 ACF/PACF return quan sát dependence tuyến tính theo lag, không chứng minh quan hệ nhân quả. ACF return nhỏ không loại trừ dependence trong squared return hoặc conditional variance.
-
-```{r weekday-figure, fig.cap="Phân phối log return theo ngày trong tuần"}
-include_required_figure("output/figures/return_by_weekday.png")
-```
-
-Boxplot weekday chỉ là bằng chứng thăm dò. Dự án không tuyên bố weekday effect vì chưa có kiểm định chuyên biệt và điều chỉnh multiple testing. SARIMA chu kỳ 5 được xem là một specification thử nghiệm, không phải bằng chứng mùa vụ đã được xác nhận.

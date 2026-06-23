@@ -243,8 +243,9 @@ Báo cáo chỉ đọc CSV/PNG đã sinh, không chạy lại model trong lúc k
 | `forecast_cv_metrics_summary.csv` | Tổng hợp rolling CV |
 | `forecast_diagnostics.csv` | Ljung-Box forecast residuals |
 | `price_forecast_comparison.csv` | Holdout + CV + diagnostics |
-| `*_forecast.png` | Dự báo từng model |
-| `*_residual_diagnostics.png` | Residual diagnostics từng model |
+| `ets_damped_forecast.png` | Dự báo ETS Damped, model được trình bày trong báo cáo |
+| `ets_damped_residual_diagnostics.png` | Residual diagnostics của ETS Damped |
+| `output/models/*_model.rds` | Fitted forecast models để load thử nhanh |
 
 ### GARCH
 
@@ -257,8 +258,10 @@ Báo cáo chỉ đọc CSV/PNG đã sinh, không chạy lại model trong lúc k
 | `volatility_model_comparison.csv` | Fit + diagnostics + provisional rule |
 | `garch_model_comparison.png` | Conditional volatility của bốn model |
 | `garch_acf_diagnostics.png` | ACF standardized residuals |
-| `garch_qq_diagnostics.png` | Normal-reference QQ plots |
 | `garch_news_impact.png` | News-impact curves của model bất đối xứng |
+| `garch_fits.rds` | Named list chứa cả bốn fitted GARCH models |
+| `garch_model.rds` | sGARCH-Normal baseline để chạy thử nhanh |
+| `garch_candidate_model.rds` | eGARCH-Student-t, candidate cân bằng trong báo cáo |
 
 ### Báo cáo
 

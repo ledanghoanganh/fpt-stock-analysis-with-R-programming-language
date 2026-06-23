@@ -1,6 +1,4 @@
 # MODULE 03 - TÍNH DỪNG VÀ DỰ BÁO GIÁ
-# Input: dữ liệu sạch. Output: ADF, holdout/CV metrics, diagnostics, RDS và PNG.
-# Mọi split giữ nguyên thứ tự thời gian; tuyệt đối không shuffle quan sát.
 source("R/00_config.R")
 require_packages(c("tseries", "forecast", "ggplot2"))
 
@@ -129,12 +127,13 @@ diagnose_model <- function(model, name) {
   test_lag <- max(10, fitdf + 1)
   test <- stats::Box.test(residuals, lag = test_lag, type = "Ljung-Box", fitdf = fitdf)
 
-  # tsdisplay gom residual series, ACF và PACF vào một hình.
-  png(file.path(FIGURE_DIR, paste0(tolower(gsub(" ", "_", name)),
-                                   "_residual_diagnostics.png")),
-      width = 800, height = 500)
-  on.exit(dev.off(), add = TRUE)
-  forecast::tsdisplay(residuals, main = paste("Residual diagnostics -", name))
+  # Chỉ lưu hình residual cho model được trình bày trong báo cáo.
+  if (name == "ETS Damped") {
+    png(file.path(FIGURE_DIR, "ets_damped_residual_diagnostics.png"),
+        width = 800, height = 500)
+    on.exit(dev.off(), add = TRUE)
+    forecast::tsdisplay(residuals, main = paste("Residual diagnostics -", name))
+  }
 
   tibble(
     model = name,
@@ -224,35 +223,22 @@ final_metrics <- score_forecasts(final$forecasts, test$close) %>%
   select(model, split, rmse, mae, mape)
 write_project_csv(final_metrics, "forecast_metrics.csv")
 
-# Registry này điều khiển đồng thời tên model, tên file hình và tên file RDS.
+# Registry này giữ nhãn/type và tên file RDS của các fitted statistical models.
 model_files <- tribble(
-  ~key, ~label, ~plot_file, ~rds_file, ~type,
-  "ARIMA", "ARIMA", "arima_forecast.png", "arima_model.rds", "Base",
-  "SARIMA", "SARIMA", "sarima_forecast.png", "sarima_model.rds", "Improved",
-  "ETS", "ETS", "ets_forecast.png", "ets_model.rds", "Base",
-  "ETS_Damped", "ETS Damped", "ets_damped_forecast.png", "ets_damped_model.rds", "Improved",
-  "ARIMAX", "ARIMAX (Lagged)", "arima_xreg_forecast.png", "arima_xreg_model.rds", "Improved"
+  ~key, ~label, ~type, ~rds_file,
+  "ARIMA", "ARIMA", "Base", "arima_model.rds",
+  "SARIMA", "SARIMA", "Improved", "sarima_model.rds",
+  "ETS", "ETS", "Base", "ets_model.rds",
+  "ETS_Damped", "ETS Damped", "Improved", "ets_damped_model.rds",
+  "ARIMAX", "ARIMAX (Lagged)", "Improved", "arima_xreg_model.rds"
 )
-purrr::pwalk(model_files, function(key, label, plot_file, rds_file, type) {
-  save_forecast_plot(final$forecasts[[key]], test$close, label, plot_file)
+save_forecast_plot(
+  final$forecasts[["ETS_Damped"]], test$close,
+  "ETS Damped", "ets_damped_forecast.png"
+)
+purrr::pwalk(model_files, function(key, label, type, rds_file) {
   saveRDS(final$models[[key]], file.path(MODEL_DIR, rds_file))
 })
-
-# AIC/BIC chỉ áp dụng cho fitted statistical models, không cho Naive/Drift.
-aic_bic <- purrr::map_dfr(seq_len(nrow(model_files)), function(index) {
-  key <- model_files$key[[index]]
-  fitted_model <- final$models[[key]]
-  tibble(
-    model = model_files$label[[index]],
-    aic = AIC(fitted_model), bic = BIC(fitted_model),
-    type = model_files$type[[index]]
-  )
-})
-write_project_csv(
-  final_metrics %>% left_join(aic_bic, by = "model") %>%
-    select(model, rmse, mape, aic, bic, type),
-  "model_aic_bic_comparison.csv"
-)
 
 # Diagnostics dùng key ARIMAX ngắn để tương thích bảng comparison hiện tại.
 diagnostic_labels <- c(ARIMA = "ARIMA", SARIMA = "SARIMA", ETS = "ETS",

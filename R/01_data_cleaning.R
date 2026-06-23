@@ -1,6 +1,4 @@
 # MODULE 01 - LÀM SẠCH DỮ LIỆU
-# Input: raw OHLCV từ notebook. Output: clean CSV và quality report.
-# Đây là nơi duy nhất sửa dữ liệu; các module sau chỉ đọc dữ liệu sạch.
 source("R/00_config.R")
 
 # Sáu cột này là hợp đồng dữ liệu giữa notebook và pipeline R.

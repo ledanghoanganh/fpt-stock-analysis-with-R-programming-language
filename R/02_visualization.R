@@ -1,5 +1,4 @@
 # MODULE 02 - PHÂN TÍCH KHÁM PHÁ VÀ TRỰC QUAN HÓA
-# Input: fpt_clean.csv. Output: hai bảng mô tả và chín hình PNG.
 source("R/00_config.R")
 require_packages(c("scales", "forecast"))
 if (!file.exists(CLEAN_DATA_PATH)) stop("Hãy chạy R/01_data_cleaning.R trước.")
@@ -123,14 +122,6 @@ save_plot("squared_returns.png", ggplot(returns, aes(date, return^2)) +
        subtitle = "Các spike theo cụm minh họa volatility clustering",
        x = "Năm", y = expression(return^2)) + project_theme)
 
-# Boxplot weekday chỉ là bằng chứng thăm dò, không tự chứng minh hiệu ứng lịch.
-save_plot("return_by_weekday.png", ggplot(returns, aes(weekday, return)) +
-  geom_boxplot(fill = "#80CBC4", outlier.alpha = 0.25) +
-  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
-  labs(title = "Phân phối lợi suất theo ngày trong tuần",
-       subtitle = "Bằng chứng thăm dò cho mùa vụ tuần",
-       x = NULL, y = "Log return") + project_theme)
-
 #' Lưu biểu đồ ACF hoặc PACF bằng base graphics
 #'
 #' @param name Tên file PNG trong `output/figures`.
@@ -146,4 +137,4 @@ save_correlation_plot <- function(name, plot_function, title) {
 save_correlation_plot("acf_return.png", forecast::Acf, "ACF của lợi suất log")
 save_correlation_plot("pacf_return.png", forecast::Pacf, "PACF của lợi suất log")
 
-message("Đã xuất 2 bảng mô tả và 9 biểu đồ EDA.")
+message("Đã xuất 2 bảng mô tả và 8 biểu đồ EDA.")

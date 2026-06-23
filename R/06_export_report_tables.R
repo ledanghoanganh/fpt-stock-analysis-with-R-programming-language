@@ -1,5 +1,4 @@
 # MODULE 06 - XUẤT WORKBOOK KIỂM TRA
-# Module chỉ trình bày bốn CSV hiện có thành bốn worksheet cùng định dạng.
 source("R/00_config.R")
 require_packages("openxlsx")
 
@@ -10,7 +9,7 @@ tables <- list(
                             check.names = FALSE),
   So_Sanh_Mo_Hinh = read.csv(file.path(TABLE_DIR, "model_comparison.csv"),
                              check.names = FALSE),
-  Tham_So_GARCH = read.csv(file.path(TABLE_DIR, "garch_summary.csv"),
+  Tham_So_GARCH = read.csv(file.path(TABLE_DIR, "garch_parameters.csv"),
                            check.names = FALSE)
 )
 # Giữ đúng tên sheet 1-4 của workbook hiện tại để output không thay đổi.

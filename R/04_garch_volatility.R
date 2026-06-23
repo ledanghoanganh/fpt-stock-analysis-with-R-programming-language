@@ -1,6 +1,4 @@
 # MODULE 04 - MÔ HÌNH HÓA CONDITIONAL VOLATILITY
-# Input: 2.786 log returns. Output: 4 GARCH fits, diagnostics, CSV/RDS và 5 PNG.
-# Thiết kế fail-fast: dữ liệu/model lỗi sẽ dừng ngay thay vì bị bỏ qua âm thầm.
 source("R/00_config.R")
 require_packages(c("rugarch", "FinTS", "scales"))
 
@@ -237,35 +235,14 @@ diagnostic_summary <- purrr::imap_dfr(fits, function(fit, model_name) {
   )
 })
 
-# 5. XUẤT CÁC BẢNG VÀ MODEL.
+# 5. XUẤT CÁC BẢNG CẦN CHO BÁO CÁO.
 write_project_csv(garch_comparison, "garch_comparison.csv")
 write_project_csv(garch_parameters, "garch_parameters.csv")
 write_project_csv(garch_diagnostics, "garch_diagnostics.csv")
 write_project_csv(diagnostic_summary, "garch_diagnostic_summary.csv")
 saveRDS(fits, file.path(MODEL_DIR, "garch_fits.rds"))
-
-# Hai output cũ của sGARCH-Normal vẫn được giữ cho các module hiện tại.
-base_fit <- fits[["sGARCH-Normal"]]
-saveRDS(base_fit, file.path(MODEL_DIR, "garch_model.rds"))
-
-base_parameters <- filter(garch_parameters, model == "sGARCH-Normal") %>%
-  transmute(
-    Parameter = parameter, Estimate = estimate, StdError = std_error,
-    t_value = Estimate / StdError, Pr_z = p_value
-  )
-base_info <- tibble(
-  Parameter = c("Log-Likelihood", "AIC", "BIC"),
-  Estimate = c(rugarch::likelihood(base_fit), rugarch::infocriteria(base_fit)[1:2]),
-  StdError = NA_real_, t_value = NA_real_, Pr_z = NA_real_
-)
-write_project_csv(bind_rows(base_parameters, base_info), "garch_summary.csv")
-
-vol_df <- tibble(
-  date = df_valid$date,
-  return = returns,
-  volatility = as.numeric(base_fit@fit$sigma)
-)
-write_project_csv(vol_df, "garch_volatility.csv")
+saveRDS(fits[["sGARCH-Normal"]], file.path(MODEL_DIR, "garch_model.rds"))
+saveRDS(fits[["eGARCH-Student-t"]], file.path(MODEL_DIR, "garch_candidate_model.rds"))
 
 # 6. DỮ LIỆU PHỤC VỤ CÁC BIỂU ĐỒ.
 volatility_long <- purrr::imap_dfr(fits, function(fit, model) {
@@ -296,10 +273,6 @@ acf_data <- purrr::imap_dfr(fits, function(fit, model) {
   )
 })
 
-qq_data <- purrr::imap_dfr(fits, function(fit, model) {
-  tibble(model, standardized_residual = standardized_residuals(fit))
-})
-
 news_impact_data <- purrr::map_dfr(
   c("eGARCH-Student-t", "gjrGARCH-Student-t"),
   function(model) {
@@ -312,7 +285,7 @@ news_impact_data <- purrr::map_dfr(
   }
 )
 
-# 7. VẼ VÀ LƯU NĂM HÌNH GARCH.
+# 7. VẼ VÀ LƯU BA HÌNH GARCH ĐƯỢC DÙNG TRONG BÁO CÁO.
 theme_garch <- theme_minimal(base_size = 11) +
   theme(
     plot.title = element_text(face = "bold", hjust = 0.5),
@@ -333,19 +306,6 @@ save_plot <- function(filename, plot, width, height) {
   ggsave(file.path(FIGURE_DIR, filename), plot,
          width = width, height = height, dpi = 300, bg = "white")
 }
-
-p_base <- ggplot(vol_df, aes(date)) +
-  geom_line(aes(y = return), color = "grey70", linewidth = 0.3) +
-  geom_line(aes(y = volatility), color = "#C62828", linewidth = 0.55) +
-  geom_line(aes(y = -volatility), color = "#C62828", linewidth = 0.55) +
-  scale_x_date(date_breaks = "1 year", date_labels = "%Y") +
-  scale_y_continuous(labels = scales::label_percent(accuracy = 1)) +
-  labs(
-    title = "FPT returns and sGARCH(1,1)-Normal volatility",
-    subtitle = "Red lines are +/- one conditional standard deviation, not a 95% interval",
-    x = NULL, y = "Return / conditional volatility"
-  ) + theme_garch
-save_plot("garch_volatility.png", p_base, 11, 6.5)
 
 p_comparison <- ggplot(volatility_long, aes(date, volatility, color = model)) +
   geom_line(linewidth = 0.45, alpha = 0.85) +
@@ -371,17 +331,6 @@ p_acf <- ggplot(acf_data, aes(lag, acf)) +
   ) + theme_garch +
   theme(axis.text.x = element_text(size = 7), strip.text = element_text(size = 8))
 save_plot("garch_acf_diagnostics.png", p_acf, 14, 7.5)
-
-p_qq <- ggplot(qq_data, aes(sample = standardized_residual)) +
-  stat_qq(alpha = 0.35, size = 0.7, color = "#1565C0") +
-  stat_qq_line(color = "#C62828", linewidth = 0.6) +
-  facet_wrap(~model, scales = "free", ncol = 2) +
-  labs(
-    title = "Normal-reference Q-Q plots of standardized residuals",
-    subtitle = "Descriptive tail check; Student-t models are not expected to follow a Normal line exactly",
-    x = "Theoretical Normal quantile", y = "Sample quantile"
-  ) + theme_garch
-save_plot("garch_qq_diagnostics.png", p_qq, 11, 8)
 
 p_news <- ggplot(news_impact_data, aes(shock, conditional_variance, color = model)) +
   geom_line(linewidth = 0.9) +

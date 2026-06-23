@@ -521,11 +521,6 @@ ACF standardized residual kiểm tra mean dependence còn sót. ACF squared
 standardized residual kiểm tra variance dependence còn sót. Cột nằm trong biên
 gợi ý autocorrelation nhỏ, nhưng phải đọc cùng Ljung-Box/ARCH-LM.
 
-## `garch_qq_diagnostics.png`
-
-Điểm lệch đường tham chiếu ở đuôi gợi ý distribution chưa mô tả hết extremes.
-Pearson GOF xác nhận đây vẫn là hạn chế.
-
 ## `garch_news_impact.png`
 
 So sánh response với standardized shock âm và dương. Đường không đối xứng minh
