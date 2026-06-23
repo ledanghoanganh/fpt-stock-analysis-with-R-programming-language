@@ -126,10 +126,11 @@ Notebook thu thập → Làm sạch & kiểm tra → EDA & trực quan hóa
 
 ## Slide 6 — Trực quan hóa: Phân phối return và volatility clustering *(Người 1 trình bày)*
 
-**Hình cần chèn (chọn 2-3):**
+**Hình cần chèn (ưu tiên cả 3):**
 
 - `output/figures/return_distribution.png` — histogram vs Normal.
-- `output/figures/qqplot_return.png` — QQ plot.
+- `output/figures/qqplot_return.png` — QQ plot (**nên chèn** — minh chứng trực quan
+  mạnh nhất cho heavy tails, điểm lệch ở hai đuôi dễ thấy hơn histogram).
 - `output/figures/squared_returns.png` — squared returns theo cụm.
 
 **Thông điệp cần nói:**
@@ -273,8 +274,10 @@ r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t
 > kiện của log return. Volatility hôm nay được cập nhật từ shock mới và volatility
 > trong quá khứ; vì vậy mô hình phù hợp với hiện tượng biến động tập trung theo cụm.
 
-> Khi dựng PowerPoint, đổi tiêu đề slide này thành **“Lý thuyết nền tảng của
-> GARCH(1,1)”** và bỏ toàn bộ năm bullet đã xuất hiện ở slide trước.
+> **⚠️ LỖI TRÊN PPT HIỆN TẠI (bao_cao_demo.pdf):** Slide 11 đang copy nguyên năm
+> bullet của Slide 10 ("Forecast giá trả lời...", "Log return...", v.v.). **Phải
+> xóa hết năm bullet đó** và chỉ giữ lại: công thức GARCH, bảng ký hiệu và đoạn
+> giải thích ở trên. Nội dung Slide 10 và Slide 11 phải khác nhau hoàn toàn.
 
 **Lời thoại gợi ý (~50 giây):**
 
@@ -367,8 +370,9 @@ r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t
 **Lựa chọn:** eGARCH-Student-t là **ứng viên cân bằng** vì:
 
 - AIC chỉ kém GJR khoảng 0,00137.
-- Core residual diagnostics đạt + Nyblom stability đạt.
-- Tuy nhiên Pearson GOF bác bỏ distribution fit → đây là hạn chế.
+- Core residual diagnostics (LB + ARCH-LM + Sign-bias) đạt ở cả 4 model.
+- **Nyblom stability chỉ eGARCH đạt** — ba model còn lại đều vượt ngưỡng.
+- Pearson GOF bác bỏ distribution fit ở cả 4 → đây là hạn chế chung.
 
 **Đoạn có thể đặt trực tiếp trên slide để nhìn và đọc:**
 
@@ -377,7 +381,56 @@ r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t
 > nên được chọn là ứng viên cân bằng. Đây không phải mô hình hoàn hảo vì Pearson
 > GOF vẫn bác bỏ distribution fit.
 
+**Lời thoại gợi ý (~30 giây):**
+
+> Trong 4 model, GJR có AIC nhỏ nhất nhưng Nyblom lại bác bỏ tính ổn định tham số.
+> eGARCH có AIC bám rất sát GJR, trong khi toàn bộ core diagnostics và Nyblom đều đạt.
+> Vì vậy nhóm chọn eGARCH-t là ứng viên cân bằng nhất, chứ không tuyên bố đây là
+> model hoàn hảo tuyệt đối vì Pearson GOF vẫn bị bác bỏ.
+
+**Người nói:** Lê Đặng Hoàng Anh.
+
+## Slide 15 — Kết quả kiểm định (Bảng p-value chi tiết)
+
+**Nội dung trên slide:** (Bảng 6x6 như hình đã cung cấp)
+
+| Diagnostic | sGARCH-N | sGARCH-t | eGARCH-t | GJR-t | Kết quả |
+|---|---:|---:|---:|---:|:---:|
+| LB residual | 0,817 | 0,859 | 0,877 | 0,868 | ✅ Cả 4 |
+| LB squared | 0,881 | 0,783 | 0,842 | 0,632 | ✅ Cả 4 |
+| ARCH-LM | 0,810 | 0,494 | 0,646 | 0,366 | ✅ Cả 4 |
+| Sign-bias joint | 0,103 | 0,060 | 0,102 | 0,086 | ✅ Cả 4 |
+| Nyblom (stat/crit) | 12,90/1,24 | 11,89/1,47 | 1,50/1,68 | 27,35/1,68 | ✅ eGARCH |
+| Pearson GOF | ≈ 0 | 1,4 × 10⁻¹¹ | 2,0 × 10⁻¹⁵ | 5,4 × 10⁻¹⁴ | ❌ Cả 4 |
+
+**Đoạn có thể đặt trực tiếp trên slide để nhìn và đọc:**
+
+> P-value ≥ 0,05 (chưa bác bỏ H₀) được xem là đạt đối với 4 kiểm định đầu tiên.
+> Riêng kiểm định Nyblom so sánh test statistic với critical value. Cả 4 mô hình 
+> đều giải quyết được các hiệu ứng phương sai, nhưng chỉ eGARCH là có tham số
+> ổn định qua thời gian.
+
+**Lời thoại gợi ý (~40 giây):**
+
+> Đây là bảng p-value chi tiết minh chứng cho quyết định ở slide trước. Với 4
+> kiểm định đầu, quy tắc là p-value lớn hơn 0,05 thì đạt. Các con số ở đây đều
+> lớn hơn 0,05, xác nhận cả 4 model đều không còn bỏ sót cấu trúc trung bình,
+> cấu trúc phương sai và phản ứng bất đối xứng. 
+> Tuy nhiên, với Nyblom, statistic của eGARCH là 1,50 nhỏ hơn ngưỡng 1,68 nên
+> đạt tính ổn định, trong khi 3 model kia vi phạm rất xa. Cuối cùng, Pearson GOF
+> đều xấp xỉ 0, bác bỏ phân phối Student-t ở toàn bộ mô hình.
+
+**Người nói:** Lê Đặng Hoàng Anh.
+
+## Slide 16 — Conditional volatility theo thời gian
+
+> **Ghi chú:** PPT thực tế (`bao_cao_demo.pdf`) tách biểu đồ volatility thành
+> slide riêng (Slide 15). Rmd cũ gộp vào Slide 14 nên thiếu slide này.
+
 **Hình:** `output/figures/garch_model_comparison.png`.
+
+**Hình bổ sung (khuyến nghị):** `output/figures/garch_acf_diagnostics.png` — ACF
+standardized residual và squared residual, minh chứng core diagnostics đạt.
 
 **Câu kết luận phải đặt dưới biểu đồ volatility:**
 
@@ -385,16 +438,15 @@ r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t
 > nhau về độ lớn tại các đỉnh. Biểu đồ thể hiện conditional volatility lịch sử,
 > không phải dự báo giá và không tự xác định nguyên nhân của các cú sốc.
 
-**Lời thoại gợi ý (~55 giây):**
+**Lời thoại gợi ý (~15 giây):**
 
-> GJR có AIC nhỏ nhất, nhưng Nyblom bác bỏ tính ổn định tham số. eGARCH chỉ kém
-> GJR khoảng 0,00137 AIC, trong khi các core diagnostics và Nyblom đều đạt. Vì
-> vậy nhóm chọn eGARCH-t là ứng viên cân bằng, chứ không tuyên bố đây là model tốt
-> tuyệt đối. Pearson GOF vẫn bị bác bỏ nên distribution còn chưa mô tả hết dữ liệu.
+> Nhìn vào biểu đồ, bốn mô hình phát hiện cùng các giai đoạn volatility cao nhưng
+> khác nhau về độ nhạy tại các đỉnh. ACF cho thấy residual và squared residual đều
+> nằm trong ngưỡng, xác nhận model đã nắm bắt được dynamics chính.
 
 **Người nói:** Lê Đặng Hoàng Anh.
 
-## Slide 15 — Phần việc Người 3 đã thực hiện
+## Slide 17 — Phần việc Người 3 đã thực hiện
 
 **Nội dung trên slide:**
 
@@ -423,7 +475,7 @@ r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t
 
 **Người nói:** Lê Đặng Hoàng Anh.
 
-## Slide 16 — Hạn chế và hướng phát triển
+## Slide 18 — Hạn chế và hướng phát triển
 
 **Nội dung trên slide:**
 
@@ -443,7 +495,7 @@ r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t
 
 **Người nói:** Lê Đặng Hoàng Anh.
 
-## Slide 17 — Kết luận
+## Slide 19 — Kết luận
 
 **Nội dung trên slide:**
 
@@ -463,21 +515,35 @@ r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t
 
 **Người nói:** Lê Đặng Hoàng Anh.
 
-## Slide 18 — Bảng phân công công việc *(Rubric: Phải in bảng phân công)*
+## Slide 20 — Bảng phân công công việc *(Rubric: Phải in bảng phân công)*
 
 > **LƯU Ý:** Bảng này **phải in ra giấy** để nộp kèm bài báo cáo theo yêu cầu
 > rubric. Đồng thời chiếu trên slide khi kết thúc phần trình bày.
 
+> **⚠️ LỖI TRÊN PPT HIỆN TẠI:** Bảng phân công có 6 cột nhưng cột cuối cùng lặp
+> lại y hệt cột đầu (Tên + MSSV). Phải sửa cột cuối thành **"Mức độ hoàn thành"**
+> hoặc **"Ký tên"** (nếu bản in cần chữ ký). Không để cột trùng.
+
 | Thành viên | MSSV | Tỷ lệ | Phân công công việc chi tiết | Thời gian thực hiện | Mức độ hoàn thành |
 |---|---|---:|---|---|---:|
-| Trần Thiên Lực | 24133037 | 30% | Thu thập dữ liệu Yahoo Finance, làm sạch (`01_data_cleaning.R`), kiểm tra chất lượng, trực quan hóa EDA (`02_visualization.R`) — 9 biểu đồ | 15/06 – 19/06/2026 | 100% |
-| Nguyễn Đức Học | 24162039 | 35% | Kiểm định ADF, dự báo giá: Naive, Drift, ARIMA, SARIMA, ETS, ETS Damped, ARIMAX (`03_stationarity_arima_ets.R`), rolling-origin CV, residual diagnostics | 15/06 – 19/06/2026 | 100% |
-| Lê Đặng Hoàng Anh | 24162006 | 35% | GARCH 4 specification (`04_garch_volatility.R`), model comparison (`05_model_comparison.R`), export tables (`06_export_report_tables.R`), tích hợp báo cáo Word, khung slide | 15/06 – 20/06/2026 | 100% |
+| Trần Thiên Lực | 24133037 | 30% | Nguồn dữ liệu, cleaning, quality checks và EDA | 25/05 – 19/06/2026 | 100% |
+| Nguyễn Đức Học | 24162039 | 35% | ADF, forecast framework, benchmark, rolling CV và diagnostics | 25/05 – 19/06/2026 | 100% |
+| Lê Đặng Hoàng Anh | 24162006 | 35% | GARCH variants, diagnostics, comparison và tích hợp báo cáo | 25/05 – 19/06/2026 | 100% |
 
 **Đánh giá chung:** Cả ba thành viên hoàn thành đúng tiến độ, phối hợp qua Git
 và review chéo PR.
 
-Cảm ơn giảng viên TS. Phan Thị Thể. Mời đặt câu hỏi.
+## Slide 21 — Cảm ơn
+
+> **Ghi chú:** PPT hiện có slide "Thanks For Listening" (Slide 19 trong PDF) nhưng
+> Rmd cũ không mô tả. Nên đổi sang tiếng Việt cho nhất quán.
+
+**Nội dung trên slide:**
+
+- Tiêu đề: **Cảm ơn thầy/cô đã lắng nghe!**
+- Dòng phụ: Mời thầy/cô đặt câu hỏi.
+
+**Người nói:** Lê Đặng Hoàng Anh — "Cảm ơn cô đã lắng nghe. Nhóm sẵn sàng trả lời câu hỏi ạ."
 
 # Câu hỏi phản biện cần chuẩn bị
 
@@ -500,7 +566,9 @@ Cảm ơn giảng viên TS. Phan Thị Thể. Mời đặt câu hỏi.
 - [ ] Có demo ngữ cảnh bài toán (Slide 2).
 - [ ] Có demo quá trình phân tích dữ liệu (Slide 3-6).
 - [ ] Có giới thiệu mô hình sử dụng và thuật toán (Slide 8, 10-12).
-- [ ] Có đánh giá hiệu suất mô hình (Slide 9, 13-14).
+- [ ] Có đánh giá hiệu suất mô hình (Slide 9, 13-16).
+- [ ] Slide 11 **không** trùng bullet với Slide 10.
+- [ ] Bảng phân công (Slide 20) không có cột trùng lặp.
 
 ## Kiểm tra kỹ thuật
 
