@@ -98,9 +98,17 @@ Trên holdout 30 phiên, `r best_holdout$model` có RMSE thấp nhất (`r fmt_n
 
 ## Bối cảnh
 
-Giá cổ phiếu là chuỗi thời gian có thứ tự, thường chứa xu hướng dài hạn và mức biến động thay đổi theo từng giai đoạn. Vì vậy, dự án không xem “dự báo giá” và “đo lường biến động” là cùng một bài toán. Dự báo giá tập trung vào conditional mean của mức giá, còn GARCH tập trung vào conditional variance của log return.
+Trong phân tích tài chính, giá cổ phiếu được ghi nhận theo thời gian tạo thành một chuỗi thời gian (time series). Chuỗi này thường có hai đặc điểm quan trọng mà các phương pháp thống kê cổ điển — vốn giả định dữ liệu độc lập và phương sai không đổi — không xử lý tốt:
 
-FPT được chọn vì repository có chuỗi OHLCV dài hơn 11 năm và đủ quan sát để thực hành cleaning, kiểm định, đánh giá ngoài mẫu và mô hình hóa volatility. Việc chọn FPT chỉ phục vụ mục tiêu học thuật; dự án không đánh giá giá trị nội tại và không đưa ra khuyến nghị mua bán.
+- **Xu hướng dài hạn (trend):** Mức giá thay đổi theo thời gian, không dao động quanh một giá trị cố định, khiến chuỗi giá thường không dừng (non-stationary). Điều này đòi hỏi kiểm định tính dừng trước khi áp dụng các mô hình dự báo.
+- **Biến động thay đổi theo giai đoạn (volatility clustering):** Những ngày thị trường "sóng gió" thường đi liền nhau — một phiên giảm mạnh có xu hướng kéo theo những phiên biến động lớn tiếp theo. Hiện tượng này yêu cầu mô hình phương sai có điều kiện thay vì giả định phương sai cố định.
+
+Vì hai đặc điểm này yêu cầu công cụ phân tích khác nhau, dự án tách thành **hai bài toán độc lập**:
+
+1. **Dự báo mức giá (price forecasting):** Ước lượng conditional mean — giá trị trung bình có điều kiện — của giá đóng cửa trong tương lai gần, sử dụng các mô hình ARIMA, ETS và so sánh với benchmark đơn giản (Naive, Drift).
+2. **Mô hình hóa biến động (volatility modeling):** Ước lượng conditional variance — phương sai có điều kiện — của log return, nhằm đo lường mức rủi ro thay đổi theo thời gian bằng các specification GARCH.
+
+FPT được chọn làm đối tượng nghiên cứu vì chuỗi dữ liệu OHLCV có sẵn trên Yahoo Finance kéo dài hơn 11 năm, cung cấp đủ quan sát (hơn 2.700 phiên giao dịch) để thực hành đầy đủ các bước: làm sạch dữ liệu, kiểm định tính dừng, đánh giá dự báo ngoài mẫu và mô hình hóa volatility. Việc chọn FPT chỉ phục vụ mục tiêu học thuật; dự án không đánh giá giá trị nội tại của cổ phiếu và không đưa ra bất kỳ khuyến nghị mua bán nào.
 
 ## Câu hỏi nghiên cứu
 
@@ -113,7 +121,16 @@ FPT được chọn vì repository có chuỗi OHLCV dài hơn 11 năm và đủ
 
 ## Mục tiêu và phạm vi
 
-Dự án xây dựng pipeline R tái lập từ raw CSV đến Word: kiểm tra dữ liệu, tạo log return, EDA, ADF, forecast evaluation, GARCH comparison và diagnostics. Phạm vi chỉ sử dụng lịch sử `FPT.VN`; dự án chưa đưa VN-Index, biến vĩ mô, tin tức hoặc dữ liệu intraday vào mô hình.
+Dự án xây dựng một pipeline phân tích hoàn chỉnh bằng R, có khả năng tái lập toàn bộ kết quả từ file CSV thô đến báo cáo Word chỉ bằng một lệnh duy nhất. Cụ thể, pipeline thực hiện các bước sau:
+
+1. **Kiểm tra và làm sạch dữ liệu:** Phát hiện ngày lỗi, ngày trùng, missing values, giá không hợp lệ và volume bằng 0.
+2. **Tạo biến phái sinh:** Tính log price và log return từ giá đóng cửa.
+3. **Phân tích khám phá (EDA):** Trực quan hóa giá, volume, return, phân phối và tự tương quan.
+4. **Kiểm định tính dừng:** Augmented Dickey-Fuller cho `close`, `log_close` và `return`.
+5. **Đánh giá dự báo giá:** So sánh bảy mô hình trên holdout 30 phiên và rolling-origin cross-validation.
+6. **Mô hình hóa volatility:** Fit bốn GARCH specifications và đánh giá bằng bộ diagnostic tests.
+
+Phạm vi chỉ sử dụng lịch sử cổ phiếu `FPT.VN` từ một nhà cung cấp (Yahoo Finance); dự án chưa đưa VN-Index, biến vĩ mô, tin tức hoặc dữ liệu intraday vào mô hình.
 
 ## Nguyên tắc phương pháp
 
@@ -194,13 +211,13 @@ Yahoo Finance có thể hiệu chỉnh dữ liệu lịch sử. Vì vậy dự �
 include_required_figure("output/figures/close_price.png")
 ```
 
-Giá thay đổi rõ về level và có xu hướng dài hạn; biểu đồ gợi ý non-stationarity nhưng không thay thế ADF. Không thể suy ra nguyên nhân kinh tế hoặc xu hướng tương lai chỉ từ đường giá.
+Nhìn vào trục Y (giá đóng cửa), đường giá FPT không dao động quanh một mức cố định mà thay đổi rõ rệt về level qua các giai đoạn: giai đoạn đầu (2015-2017) giá dao động ở mức thấp, sau đó tăng dần và đạt các đỉnh cao hơn trong những năm gần đây. Xu hướng tăng dài hạn này là dấu hiệu trực quan của non-stationarity — chuỗi không quay về một giá trị trung bình cố định. Tuy nhiên, quan sát trực quan chỉ là gợi ý ban đầu; kiểm định ADF ở chương sau mới đưa ra kết luận thống kê chính thức. Cũng cần lưu ý rằng không thể suy ra nguyên nhân kinh tế hay dự đoán xu hướng tương lai chỉ từ đường giá.
 
 ```{r volume-figure, fig.cap="Khối lượng giao dịch FPT theo thời gian"}
 include_required_figure("output/figures/volume.png")
 ```
 
-Volume phân tán mạnh và có các quan sát cực lớn. Hình được dùng mô tả thanh khoản, không chứng minh một sự kiện hay quan hệ nhân quả nếu chưa có nguồn độc lập.
+Quan sát biểu đồ volume theo thời gian, phần lớn các phiên có khối lượng tập trung ở vùng thấp (phần dưới biểu đồ), nhưng xuất hiện nhiều spike đột biến vượt lên rất cao so với mức trung bình. Sự chênh lệch giữa mean và median trong bảng thống kê mô tả cũng xác nhận điều này: mean volume lớn hơn median đáng kể, cho thấy phân phối lệch phải do ảnh hưởng của các quan sát cực lớn. Biểu đồ này dùng để mô tả mức thanh khoản chung của cổ phiếu, không chứng minh quan hệ nhân quả giữa volume và biến động giá nếu chưa có nguồn kiểm chứng độc lập.
 
 ## Log return và volatility clustering
 
@@ -208,13 +225,13 @@ Volume phân tán mạnh và có các quan sát cực lớn. Hình được dùn
 include_required_figure("output/figures/returns.png")
 ```
 
-Return dao động quanh 0 nhưng biên độ không ổn định: giai đoạn biến động lớn thường xuất hiện gần nhau. Đây là dấu hiệu thăm dò của volatility clustering; ARCH-LM ở phần GARCH kiểm định chính thức cấu trúc phương sai.
+Trục Y cho thấy log return dao động quanh giá trị 0 (đường ngang giữa biểu đồ), phù hợp với kỳ vọng rằng return trung bình gần 0 theo ngày. Tuy nhiên, điều quan trọng cần chú ý là **biên độ dao động không đều nhau qua các giai đoạn**: có những vùng biến động hẹp (các thanh nhỏ sát nhau) xen kẽ với những vùng biến động rộng (các thanh lớn tập trung thành cụm). Ví dụ, giai đoạn 2020 có biên độ return lớn hơn rõ rệt so với các giai đoạn lân cận. Hiện tượng này — giai đoạn biến động lớn thường kéo theo giai đoạn biến động lớn tiếp theo — chính là dấu hiệu trực quan của **volatility clustering**. Kiểm định ARCH-LM ở chương GARCH sẽ xác nhận chính thức liệu cấu trúc phương sai thay đổi theo thời gian này có ý nghĩa thống kê hay không.
 
 ```{r squared-return-figure, fig.cap="Bình phương log return và các cụm biến động"}
 include_required_figure("output/figures/squared_returns.png")
 ```
 
-Squared return loại dấu và giữ độ lớn shock. Các spike theo cụm củng cố động cơ dùng conditional variance model thay vì một variance cố định cho toàn sample.
+Biểu đồ bình phương return ($r_t^2$) loại bỏ dấu của return và chỉ giữ lại độ lớn của shock. Nhìn vào biểu đồ, các spike cao (tương ứng các phiên có biến động lớn) không phân tán đều mà xuất hiện **theo cụm**: khi một spike lớn xuất hiện, các spike lớn khác thường nằm liền kề ngay sau đó. Nếu phương sai thực sự không đổi theo thời gian (homoscedastic), các spike sẽ phân bố ngẫu nhiên mà không tạo thành cụm. Sự tồn tại của các cụm này củng cố động cơ sử dụng conditional variance model (như GARCH) — mô hình cho phép phương sai thay đổi theo từng giai đoạn — thay vì giả định một phương sai cố định cho toàn bộ sample.
 
 ## Hình dạng phân phối
 
@@ -222,13 +239,13 @@ Squared return loại dấu và giữ độ lớn shock. Các spike theo cụm c
 include_required_figure("output/figures/return_distribution.png")
 ```
 
-Mật độ thực nghiệm lệch khỏi Normal cùng mean/SD, đặc biệt ở phần đuôi. Vì vậy dự án so sánh Normal với standardized Student-t trong GARCH.
+Biểu đồ so sánh đường mật độ thực nghiệm của log return (histogram hoặc kernel density) với đường cong Normal có cùng mean và standard deviation. Cần chú ý hai đặc điểm: (1) **đỉnh (peak) của phân phối thực nghiệm cao hơn và nhọn hơn** so với đường Normal, cho thấy return tập trung quanh giá trị trung bình nhiều hơn Normal dự đoán; (2) **phần đuôi (tails) của phân phối thực nghiệm dày hơn** — tức là xác suất xảy ra các giá trị cực đoan (cả âm lẫn dương) lớn hơn so với phân phối Normal. Hiện tượng "đỉnh cao, đuôi dày" (leptokurtosis) này rất phổ biến trong dữ liệu tài chính và là lý do dự án so sánh Normal với phân phối Student-t (có đuôi dày hơn) trong các mô hình GARCH.
 
 ```{r qq-figure, fig.cap="Q-Q plot của log return so với Normal"}
 include_required_figure("output/figures/qqplot_return.png")
 ```
 
-Các điểm lệch đường tham chiếu ở hai đuôi gợi ý heavy tails. Q-Q plot chỉ là chẩn đoán trực quan; adjusted Pearson GOF sau GARCH mới kiểm tra distribution fit định lượng.
+Q-Q plot (Quantile-Quantile plot) so sánh phân vị của dữ liệu thực tế với phân vị lý thuyết của phân phối Normal. Nếu return tuân theo Normal hoàn hảo, tất cả các điểm sẽ nằm trên đường chéo tham chiếu. Trên biểu đồ, phần giữa các điểm bám sát đường tham chiếu, nhưng **ở hai đầu (đuôi trái và đuôi phải), các điểm lệch ra khỏi đường chéo**: đuôi trái cong xuống dưới và đuôi phải cong lên trên. Điều này xác nhận phân phối return có **heavy tails** — các giá trị cực đoan xảy ra thường xuyên hơn so với Normal. Q-Q plot chỉ là chẩn đoán trực quan; adjusted Pearson Goodness-of-Fit test sau khi fit GARCH mới kiểm tra distribution fit một cách định lượng.
 
 ## Tự tương quan
 
@@ -237,7 +254,7 @@ include_required_figure("output/figures/acf_return.png")
 include_required_figure("output/figures/pacf_return.png")
 ```
 
-ACF/PACF return quan sát dependence tuyến tính theo lag, không chứng minh quan hệ nhân quả. ACF return nhỏ không loại trừ dependence trong squared return hoặc conditional variance.
+ACF (Autocorrelation Function) đo tương quan tuyến tính giữa return tại thời điểm $t$ và return tại $t - k$ (với $k$ là lag). PACF (Partial ACF) đo tương quan sau khi loại ảnh hưởng trung gian qua các lag trung gian. Trên biểu đồ, mỗi thanh dọc biểu diễn hệ số tương quan tại một lag; đường nét đứt ngang là ngưỡng ý nghĩa 95%. Nếu hầu hết các thanh nằm trong vùng ngưỡng (không vượt đường nét đứt), return không có dependence tuyến tính mạnh theo lag — phù hợp với giả thuyết rằng thông tin đã được phản ánh vào giá. Tuy nhiên, ACF return nhỏ **không loại trừ** dependence phi tuyến hoặc dependence trong squared return (liên quan đến conditional variance), vì vậy vẫn cần GARCH để mô hình hóa biến động.
 
 
 # Tính dừng và dự báo giá
@@ -255,7 +272,9 @@ P-value lớn được diễn giải là “chưa đủ bằng chứng bác bỏ
 kable(stationarity, caption = "Kết quả kiểm định ADF trên dữ liệu sạch", digits = 4)
 ```
 
-`close` và `log_close` có p-value lần lượt `r fmt_number(stationarity$P_Value[1], 4)` và `r fmt_number(stationarity$P_Value[2], 4)`, nên chưa bác bỏ unit root ở mức 5%. `return` có p-value được `adf.test()` báo ở cận dưới 0,01, nên bác bỏ unit root. Log transform thay đổi scale nhưng không tự loại stochastic trend; sai phân log tạo return phù hợp hơn cho GARCH.
+`close` và `log_close` có p-value lần lượt `r fmt_number(stationarity$P_Value[1], 4)` và `r fmt_number(stationarity$P_Value[2], 4)` — cả hai đều lớn hơn 0,05, nên chưa bác bỏ H0: chuỗi giá gốc và log giá vẫn có thể có unit root (không dừng). Điều này phù hợp với quan sát trực quan ở chương EDA: đường giá có xu hướng thay vì dao động quanh một mức cố định. Lưu ý rằng log transform chỉ thay đổi scale (nén giá trị lớn, dãn giá trị nhỏ) nhưng không tự loại bỏ stochastic trend.
+
+Ngược lại, `return` có p-value được `adf.test()` báo ở cận dưới 0,01, bác bỏ H0 mạnh. Sai phân logarit (log return = $\log(P_t) - \log(P_{t-1})$) đã loại bỏ xu hướng và tạo chuỗi dừng, phù hợp để làm input cho các mô hình GARCH. Đây là lý do dự án dùng `return` thay vì `close` cho bài toán volatility.
 
 ## Thiết kế forecast
 
@@ -296,7 +315,11 @@ kable(price_report,
       digits = 4)
 ```
 
-`r best_holdout$model` có holdout RMSE thấp nhất (`r fmt_number(best_holdout$rmse)`), nhưng chỉ hơn Naive `r fmt_number(holdout_gain)` đơn vị RMSE. MAPE thấp nhất thuộc về `r price_comparison$model[which.min(price_comparison$mape)]` (`r fmt_number(min(price_comparison$mape), 2)`%), cho thấy thứ hạng phụ thuộc metric. Trong rolling CV, `r best_cv$model` dẫn đầu với mean RMSE `r fmt_number(best_cv$cv_mean_rmse)`.
+Đọc bảng so sánh theo ba góc độ:
+
+- **Holdout (cột `rmse`, `mae`, `mape`, `final_rmse_rank`):** Nhìn vào cột `final_rmse_rank`, `r best_holdout$model` xếp hạng 1 với RMSE = `r fmt_number(best_holdout$rmse)`, nhưng chỉ hơn Naive `r fmt_number(holdout_gain)` đơn vị — mức cải thiện rất nhỏ so với benchmark đơn giản nhất. MAPE thấp nhất thuộc về `r price_comparison$model[which.min(price_comparison$mape)]` (`r fmt_number(min(price_comparison$mape), 2)`%), cho thấy thứ hạng thay đổi tùy theo metric được chọn.
+- **Rolling CV (cột `cv_mean_rmse`, `cv_rmse_rank`):** CV kiểm tra sự ổn định của kết quả trên nhiều cửa sổ thời gian. `r best_cv$model` dẫn đầu với mean RMSE `r fmt_number(best_cv$cv_mean_rmse)`. Nếu model dẫn holdout khác với model dẫn CV, kết quả holdout có thể không ổn định.
+- **Residual diagnostics (cột `residual_diagnostic_pass`):** Giá trị `FALSE` nghĩa là model vẫn còn autocorrelation trong residual — có cấu trúc chưa được nắm bắt.
 
 ```{r forecast-diagnostic-table}
 kable(forecast_diagnostics,
@@ -304,13 +327,13 @@ kable(forecast_diagnostics,
       digits = 5)
 ```
 
-Có `r n_forecast_diagnostics_pass` trong `r nrow(forecast_diagnostics)` fitted models vượt Ljung-Box ở mức 5%; hiện tất cả residual đều chưa đạt white noise. Kết hợp ba nguồn bằng chứng, dự án chưa chứng minh model phức tạp cải thiện Naive một cách ổn định.
+Có `r n_forecast_diagnostics_pass` trong `r nrow(forecast_diagnostics)` fitted models vượt Ljung-Box ở mức 5%. Cột `lb_p_value` cho thấy p-value của từng model: nếu p-value < 0,05, residual có autocorrelation — model chưa nắm bắt hết cấu trúc mean. Hiện tất cả đều chưa đạt white noise. Kết hợp cả ba nguồn bằng chứng (holdout, CV, residual diagnostics), dự án chưa chứng minh model phức tạp cải thiện Naive một cách ổn định.
 
 ```{r ets-damped-forecast, fig.cap="ETS Damped trên holdout 30 phiên"}
 include_required_figure("output/figures/ets_damped_forecast.png")
 ```
 
-Biểu đồ cần được đọc ở phần cuối chuỗi: forecast và interval chỉ mô tả bất định theo model, không phải cam kết giá tương lai nằm trong khoảng.
+Biểu đồ gồm hai vùng chính: **phần bên trái** là dữ liệu lịch sử (training), **phần bên phải** là vùng forecast 30 phiên với đường dự báo (line) và dải prediction interval (vùng màu). Cần đọc biểu đồ ở phần cuối chuỗi: đường forecast cho thấy ETS Damped dự báo xu hướng tắt dần (không ngoại suy trend vô hạn), và dải prediction interval mở rộng dần theo horizon — phản ánh mức độ bất định tăng theo thời gian dự báo. Lưu ý rằng dải interval chỉ mô tả bất định **theo giả định của model**, không phải cam kết giá tương lai chắc chắn nằm trong khoảng.
 
 ```{r ets-damped-diagnostics, fig.cap="Residual diagnostics của ETS Damped"}
 include_required_figure("output/figures/ets_damped_residual_diagnostics.png")
@@ -325,7 +348,12 @@ ETS Damped là holdout leader theo RMSE nhưng mức cải thiện so với Naiv
 
 ## Động cơ và phương trình
 
-ARCH-LM trên raw return có p-value `r fmt_p(pre_arch$p_value)`. Với H0 “không có ARCH effect đến lag kiểm tra”, kết quả bác bỏ H0 và hỗ trợ dùng conditional variance model.
+Trước khi fit GARCH, cần kiểm tra liệu return có thực sự cần mô hình phương sai có điều kiện hay không. **Kiểm định ARCH-LM** (Engle, 1982) làm điều này bằng cách hồi quy bình phương residual lên các lag của chính nó:
+
+- **H0:** Không có ARCH effect (phương sai không thay đổi theo thời gian).
+- **H1:** Có ARCH effect (phương sai phụ thuộc vào các shock quá khứ).
+
+Kết quả: ARCH-LM trên raw return có p-value = `r fmt_p(pre_arch$p_value)`. Vì p-value rất nhỏ (< 0,05), bác bỏ H0 — xác nhận rằng return FPT có ARCH effect và việc sử dụng conditional variance model là có căn cứ.
 
 Mean và innovation equations là:
 
@@ -333,22 +361,22 @@ Mean và innovation equations là:
 r_t=\mu+\epsilon_t, \qquad \epsilon_t=\sigma_t z_t.
 \]
 
-Trong đó `epsilon_t` là shock return ngoài conditional mean, không phải residual giá. Baseline sGARCH(1,1) dùng:
+Trong đó $\mu$ là conditional mean của return, $\epsilon_t$ là phần shock (chênh lệch giữa return thực tế và conditional mean), $\sigma_t$ là conditional standard deviation, và $z_t$ là standardized innovation (có mean 0, variance 1). Baseline sGARCH(1,1) mô hình hóa phương sai có điều kiện như sau:
 
 \[
 \sigma_t^2=\omega+\alpha_1\epsilon_{t-1}^2+\beta_1\sigma_{t-1}^2.
 \]
 
-`alpha` đo phản ứng với shock mới; `beta` đo memory của variance quá khứ; `alpha + beta` là persistence của sGARCH. Không áp dụng máy móc công thức này cho eGARCH hoặc GJR-GARCH.
+Công thức này có ba thành phần: $\omega$ là hằng số (mức variance nền), $\alpha_1 \epsilon_{t-1}^2$ đo phản ứng của phương sai với shock mới nhất (nếu $\alpha_1$ lớn, một ngày biến động mạnh sẽ làm tăng nhanh phương sai hôm sau), và $\beta_1 \sigma_{t-1}^2$ đo "bộ nhớ" của variance quá khứ (nếu $\beta_1$ lớn, phương sai cao sẽ duy trì lâu). Tổng $\alpha_1 + \beta_1$ gần 1 nghĩa là volatility rất persistent. Lưu ý: công thức này chỉ áp dụng cho sGARCH; eGARCH và GJR-GARCH có parameterization riêng và không cộng $\alpha + \beta$ theo cách tương tự.
 
 ## Specification được so sánh
 
-| Model | Distribution | Vai trò |
-|---|---|---|
-| sGARCH(1,1) | Normal | Baseline đối xứng |
-| sGARCH(1,1) | Student-t | Kiểm tra heavy tails |
-| eGARCH(1,1) | Student-t | Log variance và asymmetry |
-| GJR-GARCH(1,1) | Student-t | Indicator cho shock âm |
+| Model | Distribution | Vai trò | Giải thích |
+|---|---|---|---|
+| sGARCH(1,1) | Normal | Baseline đối xứng | Mô hình cơ bản nhất; giả định shock dương và âm ảnh hưởng như nhau, innovation tuân theo Normal |
+| sGARCH(1,1) | Student-t | Kiểm tra heavy tails | Giữ cấu trúc sGARCH nhưng thay Normal bằng Student-t để xem heavy tails có cải thiện fit không |
+| eGARCH(1,1) | Student-t | Log variance và asymmetry | Mô hình hóa $\log(\sigma_t^2)$ thay vì $\sigma_t^2$, cho phép shock âm và dương tác động khác nhau lên volatility |
+| GJR-GARCH(1,1) | Student-t | Indicator cho shock âm | Thêm biến indicator $I(\epsilon_{t-1}<0)$ để ước lượng tác động bất đối xứng |
 
 Cả bốn model dùng cùng `r fmt_number(n_returns, 0)` returns và mean equation ARMA(0,0), nên AIC/BIC có thể so sánh tương đối trên cùng response/sample. Cả bốn optimizer báo convergence bằng 0.
 
@@ -360,12 +388,18 @@ volatility_report <- volatility_comparison %>%
          core_diagnostics_pass, sign_bias_pass,
          parameter_stability_pass, distribution_fit_pass,
          provisional_candidate, evidence_assessment)
+names(volatility_report) <- c("Model", "AIC", "BIC", "\u0394AIC", "Persist.",
+                              "Core", "Sign", "Stable", "GOF",
+                              "Ứng viên", "Đánh giá")
 kable(volatility_report,
-      caption = "So sánh GARCH bằng fit, residual checks, stability và GOF",
+      caption = "So sánh GARCH: Core = Ljung-Box + ARCH-LM, Sign = sign-bias, Stable = Nyblom, GOF = Pearson",
       digits = 5)
 ```
 
-Student-t cải thiện AIC rõ so với sGARCH-Normal, phù hợp với heavy tails quan sát trong EDA. GJR-GARCH-Student-t có AIC thấp nhất, nhưng Nyblom bác bỏ parameter stability. eGARCH-Student-t chỉ kém GJR `r fmt_number(volatility_candidate$delta_aic, 5)` AIC, đồng thời core residual diagnostics và joint stability đạt; vì vậy đây là ứng viên cân bằng theo quy tắc định trước, không phải model “hoàn hảo”.
+Đọc bảng so sánh theo hai nhóm:
+
+- **Fit (cột AIC, BIC, ΔAIC):** AIC và BIC càng nhỏ càng tốt. So sánh cột AIC: Student-t cải thiện AIC rõ rệt so với sGARCH-Normal, xác nhận rằng heavy tails quan sát trong EDA là có ý nghĩa. GJR-GARCH-Student-t có AIC thấp nhất, nhưng cột **Stable = FALSE** cho thấy Nyblom bác bỏ parameter stability. eGARCH-Student-t chỉ kém GJR `r fmt_number(volatility_candidate$delta_aic, 5)` AIC (đọc cột ΔAIC) — chênh lệch rất nhỏ.
+- **Diagnostics (cột Core, Sign, Stable, GOF):** `TRUE` nghĩa là vượt kiểm định, `FALSE` là không vượt. eGARCH-Student-t là model duy nhất đạt cả Core, Sign và Stable; vì vậy đây là ứng viên cân bằng theo quy tắc định trước, không phải model "hoàn hảo" vì cột GOF vẫn là FALSE.
 
 ```{r garch-diagnostic-table}
 garch_diag_report <- volatility_comparison %>%
@@ -375,7 +409,16 @@ garch_diag_report <- volatility_comparison %>%
 kable(garch_diag_report, caption = "P-value và statistics chẩn đoán GARCH", digits = 5)
 ```
 
-Ljung-Box standardized residual, Ljung-Box squared residual và ARCH-LM sau fit đều chưa bác bỏ H0 ở mức 5% cho cả bốn model. Sign-bias joint test cũng chưa bác bỏ H0. Tuy nhiên, Nyblom chỉ chấp nhận joint stability cho eGARCH; adjusted Pearson GOF bác bỏ distribution fit ở cả bốn specification.
+Để hiểu bảng chẩn đoán trên, cần biết mục đích của từng kiểm định:
+
+- **Ljung-Box standardized residual** (`ljung_box_residual_p`): Kiểm tra xem residual sau khi chuẩn hóa còn autocorrelation tuyến tính không. P-value > 0,05 nghĩa là model đã nắm bắt được mean dynamics.
+- **Ljung-Box squared residual** (`ljung_box_squared_p`): Kiểm tra xem bình phương residual còn autocorrelation không. P-value > 0,05 nghĩa là model đã nắm bắt được variance dynamics.
+- **ARCH-LM sau fit** (`arch_lm_p`): Tương tự kiểm định pre-fit, nhưng chạy trên residual sau khi fit GARCH. P-value > 0,05 nghĩa là không còn ARCH effect dư thừa.
+- **Sign-bias joint test** (`sign_bias_joint_p`): Kiểm tra xem shock dương và âm có ảnh hưởng khác nhau lên variance mà model chưa nắm bắt không. P-value > 0,05 nghĩa là asymmetry đã được model giải quyết.
+- **Nyblom stability** (`nyblom_joint`): Kiểm tra xem các tham số của model có ổn định trong suốt sample hay thay đổi theo thời gian. Giá trị joint statistic nhỏ hơn ngưỡng 5% (`nyblom_5pct_critical`) nghĩa là không có bằng chứng tham số bất ổn.
+- **Adjusted Pearson GOF** (`pearson_group20_p`): Kiểm tra xem phân phối đã chọn (Normal hoặc Student-t) có fit tốt với dữ liệu không. P-value > 0,05 nghĩa là không bác bỏ distribution fit.
+
+Kết quả: Ljung-Box (cả residual và squared), ARCH-LM và sign-bias đều chưa bác bỏ H0 ở mức 5% cho cả bốn model — các model đã nắm bắt được cấu trúc mean và variance chính. Tuy nhiên, **Nyblom chỉ chấp nhận joint stability cho eGARCH** (nhìn cột `nyblom_joint` < `nyblom_5pct_critical`); ba model còn lại có tham số có thể không ổn định qua thời gian. **Adjusted Pearson GOF bác bỏ distribution fit** ở cả bốn specification — đây là hạn chế chung.
 
 ## Tham số candidate
 
@@ -389,7 +432,7 @@ kable(candidate_parameters,
       digits = 6)
 ```
 
-Robust inference quan trọng vì distribution GOF chưa đạt. Ví dụ, một tham số có conventional p-value nhỏ nhưng robust p-value lớn không nên được diễn giải mạnh. `beta1` của eGARCH gần 1 cho thấy volatility có memory dài theo parameterization của model; không cộng `alpha1 + beta1` như sGARCH.
+Bảng tham số gồm hai loại inference: **conventional** (giả định distribution đúng) và **robust** (không yêu cầu distribution đúng hoàn toàn). Vì Pearson GOF đã bác bỏ distribution fit, **robust inference quan trọng hơn**. Cách đọc: so sánh cột `p_value` và `robust_p_value` của từng tham số — nếu một tham số có conventional p-value nhỏ nhưng robust p-value lớn, không nên diễn giải mạnh rằng tham số đó có ý nghĩa. `beta1` của eGARCH gần 1 cho thấy volatility có memory dài theo parameterization của model — shock trong quá khứ ảnh hưởng đến phương sai hiện tại rất lâu. Lưu ý: không cộng `alpha1 + beta1` như sGARCH vì eGARCH mô hình hóa $\log(\sigma_t^2)$, không phải $\sigma_t^2$.
 
 ## Volatility và asymmetry theo thời gian
 
@@ -397,7 +440,7 @@ Robust inference quan trọng vì distribution GOF chưa đạt. Ví dụ, một
 include_required_figure("output/figures/garch_model_comparison.png")
 ```
 
-Bốn đường broadly đồng biến và đều cho thấy volatility clustering. Các đỉnh chỉ mô tả giai đoạn model ước lượng conditional volatility cao; báo cáo không tự gán nguyên nhân sự kiện nếu chưa có nguồn bên ngoài.
+Biểu đồ vẽ bốn đường conditional volatility ($\sigma_t$) theo thời gian, mỗi đường tương ứng một GARCH specification. Cần chú ý: (1) bốn đường **broadly đồng biến** — cùng tăng và giảm theo các giai đoạn, xác nhận rằng các specification đều phát hiện cùng các cụm biến động; (2) các **đỉnh (peaks)** tương ứng các giai đoạn model ước lượng conditional volatility cao — nhưng báo cáo không tự gán nguyên nhân sự kiện nếu chưa có nguồn bên ngoài xác nhận; (3) sự khác biệt giữa các đường thể hiện ở độ nhạy với shock — eGARCH và GJR có thể phản ứng khác nhau với shock âm do cấu trúc bất đối xứng.
 
 ```{r garch-acf-figure, fig.cap="ACF standardized residual và squared standardized residual"}
 include_required_figure("output/figures/garch_acf_diagnostics.png")
@@ -407,7 +450,7 @@ include_required_figure("output/figures/garch_acf_diagnostics.png")
 include_required_figure("output/figures/garch_news_impact.png")
 ```
 
-News-impact curves mô tả phản ứng khác nhau với standardized shock âm và dương. Đây là minh họa cấu trúc bất đối xứng; diễn giải leverage phải dựa trên đúng dấu, parameterization và robust significance của package.
+News-impact curves cho thấy cách conditional variance phản ứng với standardized shock $z_t$ có độ lớn khác nhau. Trục X là độ lớn shock (giá trị âm = shock giảm giá, dương = shock tăng giá), trục Y là conditional variance kết quả. Nếu đường cong **đối xứng** qua $z_t = 0$, shock âm và dương cùng độ lớn tác động như nhau. Nếu đường cong **dốc hơn ở phía âm**, shock giảm giá làm tăng volatility mạnh hơn shock tăng giá cùng độ lớn — đây là hiệu ứng bất đối xứng (leverage effect) phổ biến trong tài chính. Việc diễn giải leverage cụ thể phải dựa trên dấu, parameterization và robust significance của package.
 
 ## Kết luận phần volatility
 
