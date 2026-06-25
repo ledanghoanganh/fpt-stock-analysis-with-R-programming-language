@@ -1,14 +1,12 @@
+library(here)
 
-if (!file.exists("FPT_Stock_TimeSeries.Rproj")) {
-  stop("Hãy chạy R/run_all.R từ thư mục gốc của dự án.")
-}
-source("R/00_config.R")
+source(here("R/00_config.R"))
 require_packages(c(
   "forecast", "tseries", "FinTS", "rugarch", "scales",
   "openxlsx", "knitr", "rmarkdown"
 ))
 
-log_path <- file.path("output", "pipeline_log.txt")
+log_path <- here("output/pipeline_log.txt")
 log_lines <- character()
 log_event <- function(...) {
   line <- paste0(...)
@@ -23,6 +21,7 @@ scripts <- sprintf("R/%02d_%s.R", 1:6, c(
   "data_cleaning", "visualization", "stationarity_arima_ets",
   "garch_volatility", "model_comparison", "export_report_tables"
 ))
+scripts <- here(scripts)
 purrr::walk(scripts, function(script) {
   log_event("Running: ", script)
   sys.source(script, envir = new.env(parent = globalenv()))
@@ -36,16 +35,6 @@ if (!rmarkdown::pandoc_available()) {
 }
 if (!rmarkdown::pandoc_available()) stop("Không tìm thấy Pandoc để render Word.")
 
-render_targets <- tribble(
-  ~input, ~output,
-  "report/report.Rmd", "report.docx",
-  "presentation/khung_noi_dung_slide.Rmd", "khung_noi_dung_slide.docx"
-)
-purrr::pwalk(render_targets, function(input, output) {
-  log_event("Rendering: ", output)
-  rmarkdown::render(input, output_file = output,
-                    knit_root_dir = normalizePath("."), quiet = TRUE)
-})
 
 log_event("Pipeline completed: ", format(Sys.time()))
 writeLines(log_lines, log_path, useBytes = TRUE)

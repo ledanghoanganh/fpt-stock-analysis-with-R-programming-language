@@ -6,7 +6,7 @@ Tài liệu này dành cho người làm trong dự án. Mục tiêu là giúp c
 
 | Mục | Nội dung |
 |---|---|
-| Tên đề tài | Phân tích và dự báo cổ phiếu FPT bằng R |
+| Tên đề tài | Dự báo giá và phân tích biến động cổ phiếu FPT bằng mô hình chuỗi thời gian |
 | Môn học | Lập trình R cho phân tích |
 | Nhóm | 06 |
 | Giảng viên | TS. Phan Thị Thể |

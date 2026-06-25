@@ -1,4 +1,4 @@
-setwd("C:/Users/hoc/Documents/LT_R/ck/fpt-stock-analysis-with-R-programming-language")
+
 source("R/00_config.R")
 require_packages(c("tseries", "forecast", "ggplot2"))
 

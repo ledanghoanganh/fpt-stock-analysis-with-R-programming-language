@@ -2,13 +2,14 @@
 suppressPackageStartupMessages({
   library(tidyverse)
   library(lubridate)
+  library(here)
 })
 
-RAW_DATA_PATH <- "data/raw/FPT_stock_data.csv"
-CLEAN_DATA_PATH <- "data/processed/fpt_clean.csv"
-FIGURE_DIR <- "output/figures"
-TABLE_DIR <- "output/tables"
-MODEL_DIR <- "output/models"
+RAW_DATA_PATH <- here("data/raw/FPT_stock_data.csv")
+CLEAN_DATA_PATH <- here("data/processed/fpt_clean.csv")
+FIGURE_DIR <- here("output/figures")
+TABLE_DIR <- here("output/tables")
+MODEL_DIR <- here("output/models")
 
 purrr::walk(
   c(FIGURE_DIR, TABLE_DIR, MODEL_DIR),

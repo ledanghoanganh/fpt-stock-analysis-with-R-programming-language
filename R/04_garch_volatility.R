@@ -1,4 +1,3 @@
-
 source("R/00_config.R")
 require_packages(c("rugarch", "FinTS", "scales"))
 
@@ -20,15 +19,17 @@ if (!is.finite(stats::sd(returns)) || stats::sd(returns) == 0) {
   stop("Chuỗi return không có độ biến động hợp lệ")
 }
 
-message("GARCH input: ", length(returns), " returns from ",
-        min(df_valid$date), " to ", max(df_valid$date))
+message(
+  "GARCH input: ", length(returns), " returns from ",
+  min(df_valid$date), " to ", max(df_valid$date)
+)
 
 model_specs <- tibble::tribble(
-  ~model_name,           ~variance_model, ~distribution,
-  "sGARCH-Normal",      "sGARCH",        "norm",
-  "sGARCH-Student-t",   "sGARCH",        "std",
-  "eGARCH-Student-t",   "eGARCH",        "std",
-  "gjrGARCH-Student-t", "gjrGARCH",      "std"
+  ~model_name, ~variance_model, ~distribution,
+  "sGARCH-Normal", "sGARCH", "norm",
+  "sGARCH-Student-t", "sGARCH", "std",
+  "eGARCH-Student-t", "eGARCH", "std",
+  "gjrGARCH-Student-t", "gjrGARCH", "std"
 )
 
 fit_garch_model <- function(returns, variance_model, distribution) {
@@ -118,8 +119,9 @@ standardized_residuals <- function(fit) {
 }
 
 diagnostic_row <- function(
-    model, category, test, lag = NA_integer_, statistic = NA_real_,
-    p_value = NA_real_, critical_5pct = NA_real_, result = NA_character_) {
+  model, category, test, lag = NA_integer_, statistic = NA_real_,
+  p_value = NA_real_, critical_5pct = NA_real_, result = NA_character_
+) {
   tibble::tibble(
     model = model,
     category = category,
@@ -133,7 +135,9 @@ diagnostic_row <- function(
 }
 
 p_value_result <- function(p_value, pass_text, flag_text) {
-  if (!is.finite(p_value)) return("not_available")
+  if (!is.finite(p_value)) {
+    return("not_available")
+  }
   if (p_value >= 0.05) pass_text else flag_text
 }
 
@@ -286,6 +290,7 @@ if (length(successful_fits) == 0) {
 parameter_rows <- purrr::imap(successful_fits, extract_parameter_rows)
 garch_parameters <- dplyr::bind_rows(parameter_rows)
 
+# test ARCH
 pre_arch <- FinTS::ArchTest(returns, lags = 12)
 pre_arch_row <- diagnostic_row(
   model = "Raw return",
@@ -309,7 +314,9 @@ garch_diagnostics <- dplyr::bind_rows(
 
 extract_test_value <- function(data, test_name, column) {
   values <- data[data$test == test_name, column, drop = TRUE]
-  if (length(values) == 0) return(NA_real_)
+  if (length(values) == 0) {
+    return(NA_real_)
+  }
   as.numeric(values[1])
 }
 
@@ -413,8 +420,10 @@ theme_garch <- ggplot2::theme_minimal(base_size = 11) +
   )
 
 save_garch_plot <- function(filename, plot, width, height) {
-  ggplot2::ggsave(file.path(FIGURE_DIR, filename), plot, width = width,
-                  height = height, dpi = 300, bg = "white")
+  ggplot2::ggsave(file.path(FIGURE_DIR, filename), plot,
+    width = width,
+    height = height, dpi = 300, bg = "white"
+  )
 }
 
 p_base <- ggplot2::ggplot(vol_df, ggplot2::aes(date)) +
@@ -507,7 +516,9 @@ news_impact_data <- purrr::map_dfr(asymmetric_names, function(model_name) {
     rugarch::newsimpact(successful_fits[[model_name]]),
     error = function(error) NULL
   )
-  if (is.null(impact)) return(tibble::tibble())
+  if (is.null(impact)) {
+    return(tibble::tibble())
+  }
   tibble::tibble(
     shock = as.numeric(impact$zx),
     conditional_variance = as.numeric(impact$zy),
@@ -535,7 +546,9 @@ if (nrow(news_impact_data) > 0) {
   save_garch_plot("garch_news_impact.png", p_news, 11, 5.5)
 }
 
-message("Completed GARCH framework: ", length(successful_fits), "/",
-        nrow(model_specs), " models fitted.")
+message(
+  "Completed GARCH framework: ", length(successful_fits), "/",
+  nrow(model_specs), " models fitted."
+)
 message("Pre-fit ARCH-LM p-value: ", format(pre_arch$p.value, scientific = TRUE))
 print(diagnostic_summary_rows)
